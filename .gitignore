@@ -1,0 +1,36 @@
+# Keystores & Signing Secrets
+*.jks
+*.keystore
+keystore.properties
+*.key
+*.pem
+*.p8
+*.p12
+
+# Service Account & API credentials
+hosting-*.json
+*service-account*.json
+google-services.json
+play-*.json
+*.env
+*.env.*
+
+# Build outputs
+build/
+.gradle/
+app/build/
+*.apk
+*.aab
+
+# IDE & OS files
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+print_github_secrets.sh

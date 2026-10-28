@@ -1,0 +1,87 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_build:
+        description: 'Build release bundle (requires secrets)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test Android App
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests & Lint
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Setup Release Keystore (if secrets provided)
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decoding release keystore from secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > release-key.jks
+            echo "storeFile=release-key.jks" > keystore.properties
+            echo "storePassword=$KEYSTORE_PASSWORD" >> keystore.properties
+            echo "keyAlias=$KEY_ALIAS" >> keystore.properties
+            echo "keyPassword=$KEY_PASSWORD" >> keystore.properties
+            echo "has_keystore=true" >> $GITHUB_OUTPUT
+          else
+            echo "Release keystore secrets not provided. Skipping release signing."
+            echo "has_keystore=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Release Bundle & APK (if keystore configured)
+        if: steps.keystore.outputs.has_keystore == 'true'
+        run: |
+          ./gradlew bundleRelease assembleRelease --stacktrace
+          bash bin/edge_to_edge_audit.sh
+          bash bin/check_deprecated_window_apis.sh app/build/outputs/apk/release/app-release.apk app/build/outputs/mapping/release/mapping.txt
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AiPBX-Android-Debug-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Release Artifacts (if built)
+        if: steps.keystore.outputs.has_keystore == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AiPBX-Android-Release
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
