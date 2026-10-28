@@ -100,3 +100,10 @@ android/
 ├── server_api/                     # old copy of the mobile API; the live one is web/api/mobile/
 └── *.py, *.png                     # Play store screenshots and graphics
 ```
+
+## ☁️ Cloud Infrastructure Partner
+
+[![UpCloud](https://img.shields.io/badge/UpCloud-$250_Free_Credit-7b1fa2?style=flat&logo=cloud&logoColor=white)](https://signup.upcloud.com/?promo=affiliate-aipbx250&amp;utm_source=aipbx&amp;utm_medium=affiliate&amp;utm_campaign=affiliate-aipbx250)
+
+Host your own private [AiPBX](https://github.com/mahirgul/AiPBX) server on **[UpCloud](https://signup.upcloud.com/?promo=affiliate-aipbx250&amp;utm_source=aipbx&amp;utm_medium=affiliate&amp;utm_campaign=affiliate-aipbx250)** with high-speed MaxIOPS block storage. Get **$250 in free cloud credits** with promo code `affiliate-aipbx250`.
+
