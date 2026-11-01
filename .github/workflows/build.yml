@@ -5,13 +5,29 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  # A published GitHub Release goes to Google Play. A push only builds and tests: the
+  # versionCode comes from VERSION, and Play takes every versionCode once.
+  release:
+    types: [ published ]
   workflow_dispatch:
     inputs:
-      release_build:
-        description: 'Build release bundle (requires secrets)'
-        required: false
+      upload_to_play:
+        description: 'Upload the bundle to Google Play'
+        required: true
         type: boolean
         default: false
+      track:
+        description: 'Google Play track'
+        required: true
+        default: 'production'
+        type: choice
+        options: [ production, alpha, internal, beta ]
+      release_status:
+        description: 'Release status (draft = save for review in the Play Console)'
+        required: true
+        default: 'completed'
+        type: choice
+        options: [ completed, draft, inProgress, halted ]
 
 concurrency:
   group: android-ci-${{ github.ref }}
@@ -20,6 +36,8 @@ concurrency:
 jobs:
   build:
     name: Build & Test Android App
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -85,3 +103,49 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
+
+      - name: Check Google Play upload eligibility
+        id: check_upload
+        if: steps.keystore.outputs.has_keystore == 'true' && github.event_name != 'pull_request'
+        env:
+          PLAY_KEY_JSON: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          EVENT: ${{ github.event_name }}
+          INPUT_UPLOAD: ${{ inputs.upload_to_play }}
+        run: |
+          if [ -z "$PLAY_KEY_JSON" ]; then
+            echo "::warning::PLAY_STORE_JSON_KEY secret is missing; skipping the Google Play upload."
+            echo "can_upload=false" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "release" ] || [ "$INPUT_UPLOAD" = "true" ]; then
+            echo "can_upload=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$EVENT: build and tests only."
+            echo "can_upload=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python for the Google Play upload
+        if: steps.check_upload.outputs.can_upload == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Deploy the bundle to Google Play
+        if: steps.check_upload.outputs.can_upload == 'true'
+        env:
+          PLAY_KEY_JSON: ${{ secrets.PLAY_STORE_JSON_KEY }}
+          TRACK: ${{ inputs.track || 'production' }}
+          STATUS: ${{ inputs.release_status || 'completed' }}
+        run: |
+          pip install --quiet --upgrade google-api-python-client google-auth
+          umask 077
+          printf '%s' "$PLAY_KEY_JSON" > play-service-account.json
+          trap 'rm -f play-service-account.json' EXIT
+          PLAY_STORE_JSON_KEY_FILE=play-service-account.json python3 upload_to_play_console.py "$TRACK" "$STATUS"
+
+      - name: Attach the APK to the GitHub Release
+        if: steps.keystore.outputs.has_keystore == 'true' && github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk aipbx-latest.apk
+          gh release upload "$TAG" aipbx-latest.apk --clobber --repo "$GITHUB_REPOSITORY"
