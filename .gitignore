@@ -34,3 +34,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 print_github_secrets.sh
+
+# Keys and passwords, kept here so they are not lost. Never committed.
+secrets/
