@@ -29,6 +29,13 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONObject
 
+/** A browser sign-in takes minutes at most; an older start says nothing about this link. */
+private const val BROWSER_SIGN_IN_WINDOW_MS = 10 * 60 * 1000L
+
+/** Did this app open the browser sign-in that an aipbx://auth link is coming back from? */
+internal fun isOwnBrowserSignIn(startedAt: Long, now: Long): Boolean =
+    startedAt > 0L && now - startedAt in 0..BROWSER_SIGN_IN_WINDOW_MS
+
 class LoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLoginBinding
@@ -110,6 +117,7 @@ class LoginActivity : BaseActivity() {
             try {
                 val googleAuthUrl = "$serverUrl/auth/google?mobile=1"
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(googleAuthUrl))
+                prefs.browserSignInStartedAt = System.currentTimeMillis()
                 startActivity(intent)
             } catch (e: Exception) {
                 showError(getString(R.string.err_browser, e.message))
@@ -211,17 +219,27 @@ class LoginActivity : BaseActivity() {
             // Returning from Google sign-in: aipbx://auth?success=1&code=…
             // The server no longer sends the sign-in data (token + SIP password) in the URL;
             // a single-use code is exchanged on the server where we STARTED the sign-in.
+            //
+            // Any web page can open this address. A link from someone else, carrying
+            // a code of their own account, must not silently replace the session on
+            // this phone (calls and chat would then go to that account), and its
+            // "error" text must not appear as if this app had written it.
             "auth" -> {
+                val ownSignIn = isOwnBrowserSignIn(prefs.browserSignInStartedAt, System.currentTimeMillis())
+                prefs.browserSignInStartedAt = 0L
                 if (uri.getQueryParameter("success") == "1") {
                     val code = uri.getQueryParameter("code")
                     val serverUrl = prefs.serverUrl.trim().trimEnd('/')
-                    if (!code.isNullOrEmpty() && serverUrl.isNotEmpty()) {
+                    if (code.isNullOrEmpty() || serverUrl.isEmpty()) {
+                        showError(getString(R.string.err_google_incomplete))
+                    } else if (ownSignIn) {
                         performQrLogin(serverUrl, code)
                     } else {
-                        showError(getString(R.string.err_google_incomplete))
+                        confirmServerThen(serverUrl) { replace -> performQrLogin(serverUrl, code, replace) }
                     }
                 } else {
-                    showError(uri.getQueryParameter("error") ?: getString(R.string.err_google_login))
+                    val serverError = if (ownSignIn) uri.getQueryParameter("error") else null
+                    showError(serverError ?: getString(R.string.err_google_login))
                 }
             }
         }

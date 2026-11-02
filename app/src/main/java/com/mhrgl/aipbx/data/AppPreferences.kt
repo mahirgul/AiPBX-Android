@@ -257,6 +257,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getLong(KEY_SLEEPING_WARNING_SHOWN_AT, 0L)
         set(value) = prefs.edit().putLong(KEY_SLEEPING_WARNING_SHOWN_AT, value).apply()
 
+    /** When this app last opened a browser sign-in (0 = none): see LoginActivity's aipbx://auth. */
+    var browserSignInStartedAt: Long
+        get() = prefs.getLong(KEY_BROWSER_SIGN_IN_STARTED_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_BROWSER_SIGN_IN_STARTED_AT, value).apply()
+
     /** The automatic battery-optimisation request was shown once (see BatteryPrompt). */
     var batteryPromptShown: Boolean
         get() = prefs.getBoolean(KEY_BATTERY_PROMPT_SHOWN, false) ||
@@ -431,6 +436,7 @@ class AppPreferences(context: Context) {
         private const val KEY_SLEEPING_WARNING = "has_sleeping_warning"
         private const val KEY_APP_LANGUAGE = "app_language"
         private const val KEY_BATTERY_PROMPT_SHOWN = "battery_prompt_shown"
+        private const val KEY_BROWSER_SIGN_IN_STARTED_AT = "browser_sign_in_started_at"
         private const val KEY_SLEEPING_WARNING_SHOWN_AT = "sleeping_warning_shown_at"
         private const val KEY_FULL_SCREEN_PROMPT_SHOWN = "full_screen_prompt_shown"
         private const val KEY_FULL_SCREEN_USER_ALLOWED = "full_screen_user_allowed"
