@@ -12,6 +12,7 @@ hosting-*.json
 *service-account*.json
 google-services.json
 play-*.json
+!play-release-notes.json
 *.env
 *.env.*
 
