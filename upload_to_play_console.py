@@ -34,7 +34,7 @@ def version_name():
     forgotten when the version was raised (2026-09-05).
     """
     try:
-        with open(os.path.join(BASE_DIR, '..', 'VERSION'), encoding='utf-8') as f:
+        with open(os.path.join(BASE_DIR, 'VERSION'), encoding='utf-8') as f:
             return f.read().strip() or '?'
     except OSError:
         return '?'
