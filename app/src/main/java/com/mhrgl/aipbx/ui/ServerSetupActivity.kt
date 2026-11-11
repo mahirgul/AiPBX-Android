@@ -179,7 +179,7 @@ class ServerSetupActivity : BaseActivity() {
         binding.btnQrScan.isEnabled = false
 
         lifecycleScope.launch {
-            val result = apiClient.qrLogin(serverUrl, qrToken)
+            val result = apiClient.qrLogin(serverUrl, qrToken, prefs.deviceUuid)
             binding.progressBar.visibility = View.GONE
             binding.btnConnect.isEnabled = true
             binding.btnQrScan.isEnabled = true

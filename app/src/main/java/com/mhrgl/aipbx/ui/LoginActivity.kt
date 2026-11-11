@@ -176,7 +176,7 @@ class LoginActivity : BaseActivity() {
         binding.btnQrLogin.isEnabled = false
 
         lifecycleScope.launch {
-            val result = apiClient.qrLogin(serverUrl, qrToken)
+            val result = apiClient.qrLogin(serverUrl, qrToken, prefs.deviceUuid)
             binding.progressBar.visibility = View.GONE
             binding.btnLogin.isEnabled = true
             binding.btnQrLogin.isEnabled = true
@@ -302,7 +302,7 @@ class LoginActivity : BaseActivity() {
         binding.btnLogin.isEnabled = false
 
         lifecycleScope.launch {
-            val result = apiClient.login(prefs.serverUrl, user, pass, otp)
+            val result = apiClient.login(prefs.serverUrl, user, pass, otp, prefs.deviceUuid)
             binding.progressBar.visibility = View.GONE
             binding.btnLogin.isEnabled = true
 

@@ -156,7 +156,7 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
         }
     }
 
-    suspend fun login(baseUrl: String, userOrExt: String, pass: String, otp: String? = null): Result<LoginResponse> =
+    suspend fun login(baseUrl: String, userOrExt: String, pass: String, otp: String? = null, deviceId: String? = null): Result<LoginResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val cleanUrl = baseUrl.trim().trimEnd('/')
@@ -167,6 +167,11 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                     put("password", pass.trim())
                     put("device_name", "Android-${android.os.Build.MODEL}")
                     if (!otp.isNullOrBlank()) put("otp", otp.trim())
+                    if (!deviceId.isNullOrBlank()) {
+                        put("device_id", deviceId.trim())
+                        put("platform", "android")
+                        put("app_version", com.mhrgl.aipbx.BuildConfig.VERSION_NAME)
+                    }
                 }.toString()
 
                 val request = Request.Builder()
@@ -191,7 +196,7 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             }
         }
 
-    suspend fun googleLogin(baseUrl: String, idToken: String): Result<LoginResponse> =
+    suspend fun googleLogin(baseUrl: String, idToken: String, deviceId: String? = null): Result<LoginResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val cleanUrl = baseUrl.trim().trimEnd('/')
@@ -200,6 +205,11 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                 val jsonBody = JSONObject().apply {
                     put("id_token", idToken.trim())
                     put("device_name", "Android-${android.os.Build.MODEL}")
+                    if (!deviceId.isNullOrBlank()) {
+                        put("device_id", deviceId.trim())
+                        put("platform", "android")
+                        put("app_version", com.mhrgl.aipbx.BuildConfig.VERSION_NAME)
+                    }
                 }.toString()
 
                 val request = Request.Builder()
@@ -222,7 +232,7 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             }
         }
 
-    suspend fun qrLogin(baseUrl: String, qrToken: String): Result<LoginResponse> =
+    suspend fun qrLogin(baseUrl: String, qrToken: String, deviceId: String? = null): Result<LoginResponse> =
         withContext(Dispatchers.IO) {
             try {
                 val cleanUrl = baseUrl.trim().trimEnd('/')
@@ -231,6 +241,11 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                 val jsonBody = JSONObject().apply {
                     put("qr_token", qrToken.trim())
                     put("device_name", "Android-${android.os.Build.MODEL}")
+                    if (!deviceId.isNullOrBlank()) {
+                        put("device_id", deviceId.trim())
+                        put("platform", "android")
+                        put("app_version", com.mhrgl.aipbx.BuildConfig.VERSION_NAME)
+                    }
                 }.toString()
 
                 val request = Request.Builder()
