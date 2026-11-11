@@ -8,9 +8,9 @@
 
 - **Package:** `com.mhrgl.AiPBX` (debug builds: `com.mhrgl.AiPBX.debug`)
 - **Android:** 8.0 (API 26) to 16 (API 36)
-- **Version:** `versionName` / `versionCode` in `app/build.gradle.kts`
+- **Version:** this repository’s root `VERSION`; Gradle derives `versionName` and `versionCode` from it
 - **Distribution:** Google Play (CI uploads releases to the production track), or the signed
-  APK directly
+  APK directly (requires release signing)
 
 A native Android client for an AiPBX server: calls (audio and video) over WebRTC, chat, voicemail,
 call history and the company directory. It talks only to the user's own PBX; push through Firebase
@@ -48,10 +48,10 @@ is optional.
 Requirements: Android SDK 36, JDK 17; the Gradle wrapper is included.
 
 ```bash
-./gradlew testReleaseUnitTest      # unit tests (including EdgeToEdgeComplianceTest)
+./gradlew testDebugUnitTest lintRelease  # CI unit tests and release lint
 ./gradlew assembleDebug            # app/build/outputs/apk/debug/app-debug.apk
-./gradlew assembleRelease          # signed release APK
-./gradlew bundleRelease            # signed AAB for Google Play
+./gradlew assembleRelease          # release APK (unsigned without signing configuration)
+./gradlew bundleRelease            # AAB; Play upload requires signing configuration
 bin/tls_audit.sh                   # checks that no TLS bypass came back (Play policy)
 bin/edge_to_edge_audit.sh          # checks Android 15 edge-to-edge compliance & deprecations
 ```
@@ -61,31 +61,62 @@ bin/edge_to_edge_audit.sh          # checks Android 15 edge-to-edge compliance &
 Android 15 enforces edge-to-edge display by default and deprecates explicit bar color and decor fitting APIs. To permanently satisfy Google Play Console policies:
 
 1. **`BaseActivity` Pattern:** All UI screens inherit from `com.mhrgl.aipbx.ui.BaseActivity`.
-2. **Zero-Parameter `enableEdgeToEdge()`:** Invoked automatically by `BaseActivity.onCreate()`. Never pass custom parameters (like `SystemBarStyle.dark/light(...)`).
+2. **System-managed edge-to-edge:** Android 15+ handles it for the target SDK; Android 8–14 retains classic bars. Never call AndroidX `enableEdgeToEdge()`, `EdgeToEdge.enable()` or `WindowCompat.enableEdgeToEdge()`; their older-platform code introduces deprecated window APIs into the built app.
 3. **No Deprecated APIs:** Never call `Window.setDecorFitsSystemWindows`, `WindowCompat.setDecorFitsSystemWindows`, `setStatusBarColor`, or `setNavigationBarColor`.
 4. **Window Insets:** Root layouts must call `applyEdgeToEdgeInsets(rootView, consumeIme = true/false)` to prevent system bars or keyboards from overlapping UI elements.
-5. **Continuous Verification:** `EdgeToEdgeComplianceTest` and `bin/edge_to_edge_audit.sh` strictly guard the codebase against regressions.
+5. **Continuous verification:** run `EdgeToEdgeComplianceTest`, `bin/edge_to_edge_audit.sh`, and the built-release audit below. Dependencies count as well as app source.
 
-Release signing reads `keystore.properties` (not in git). `sdk.dir` goes into `local.properties`.
+After building a release, audit its APK and R8 mapping:
+
+```bash
+bin/check_deprecated_window_apis.sh app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/mapping/release/mapping.txt
+```
+
+Use `app-release.apk` instead when the build is signed. Release signing reads `keystore.properties`
+and `release-key.jks` (both private, not committed). `sdk.dir` goes into `local.properties`.
 
 ### Releasing
 
-1. Raise `versionCode` and `versionName` in `app/build.gradle.kts`.
-2. Update `play-release-notes.json` ("What's new" on Google Play; `version` must equal
-   `versionName`).
-3. Merge to `main`: the *Build Android App & Deploy* workflow builds, signs and uploads to the Play
-   alpha track.
+1. Update this repository's `VERSION` and matching `play-release-notes.json` (`version` must equal
+   `versionName`). Version codes are `major * 1,000,000 + minor * 10,000 + patch * 100 + androidBuild`.
+   An Android-only rebuild can set `-PandroidBuild=N` (0–99); Play accepts each version code once.
+2. Run the unit, lint and built-APK audits above. Configure the signing and Play credentials in CI.
+3. Publish a GitHub Release in **this Android repository**, or manually run **Android CI** with
+   `upload_to_play=true`. The default track is **production**; a manual run can select another track
+   and release status. Pushes and pull requests build/test without uploading to Play.
 
-Texts: `app/src/main/res/values*/strings.xml` (23 languages); `scripts/check_mobile_lang.py` checks
-that every language has every string.
+Publishing an AiPBX server release does not publish the Android app. Missing signing or Play
+credentials skip upload; a successful build alone does not mean a store version is available.
+
+Texts live in `app/src/main/res/values*/strings.xml` (23 languages). Release lint checks formatting
+arguments; keep the same numbered placeholders and compatible argument types in every language.
+
+## Sign-in and session changes
+
+Browser sign-in callbacks (`aipbx://auth`) always show a confirmation before replacing or creating
+an app session. Refresh requests are tied to the server, token and sign-in that made the original
+request: a late response cannot overwrite another account or borrow a new account's token.
+Signing out invalidates that session; FCM cleanup uses the credentials captured for that sign-out.
+
+## Connection troubleshooting
+
+Portal sign-in, chat and SIP registration use different connections. A successful login does not
+prove that `/ws` (SIP signaling) and `/chat/ws` (chat) can complete a WebSocket upgrade. A chat error
+such as “Too many follow-up requests” warrants checking proxy redirects and authentication rules
+for both paths. Another SIP app may use a different transport and does not verify these endpoints.
+See the server's [reverse proxy guide](https://github.com/mahirgul/AiPBX/blob/main/docs/reverse-proxy.md)
+and [WebRTC/NAT guide](https://github.com/mahirgul/AiPBX/blob/main/docs/webrtc-nat.md).
+
+Use the in-app log viewer for diagnosis; remove tokens, credentials and personal numbers before
+sharing a report. Exempt the app from battery optimisation if background registration repeatedly stops.
 
 ## Layout
 
 ```
-android/
-├── app/build.gradle.kts            # version, SDK levels, dependencies
+AiPBX-Android/
+├── app/build.gradle.kts            # version calculation, SDK levels, dependencies
 ├── app/src/main/
-│   ├── AndroidManifest.xml         # permissions, services, deep link aipbx://login
+│   ├── AndroidManifest.xml         # permissions, services, deep links aipbx://login and aipbx://auth
 │   ├── assets/phone_engine.html    # JsSIP engine (WebView)
 │   └── java/com/mhrgl/aipbx/
 │       ├── data/                   # ApiClient (REST), AppPreferences, ChatWebSocketManager
