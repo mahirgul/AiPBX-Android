@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.mhrgl.AiPBX"
+        applicationId = "org.ownpbx"
         minSdk = 26
         targetSdk = 36
         // The app has the PBX's version (repo VERSION file, e.g. 1.50.0):
@@ -77,7 +77,6 @@ android {
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
         }
     }

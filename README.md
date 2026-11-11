@@ -6,7 +6,7 @@
   </a>
 </p>
 
-- **Package:** `com.mhrgl.AiPBX` (debug builds: `com.mhrgl.AiPBX.debug`)
+- **Package:** `org.ownpbx`
 - **Android:** 8.0 (API 26) to 16 (API 36)
 - **Version:** `versionName` / `versionCode` in `app/build.gradle.kts`
 - **Distribution:** Google Play (CI uploads releases to the production track), or the signed
