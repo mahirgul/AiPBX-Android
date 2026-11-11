@@ -1,0 +1,61 @@
+# Auto Release — creates a tag + GitHub release from the VERSION file, with
+# the debug APK attached.
+#
+# A fix pushed to main is invisible to users until it is tagged: the release
+# is what people install from. This workflow closes that gap: whenever code
+# is pushed to main, it reads VERSION and, if no tag v<VERSION> exists yet,
+# builds the debug APK and creates the tag and a release for it (notes
+# auto-generated from the commits since the last tag), with the APK attached
+# as a release asset.
+#
+# That makes the flow: push a fix (bumping VERSION) -> a release appears
+# automatically with an installable APK -> no manual release, no waiting on
+# the CI artifact page.
+#
+# It is idempotent: if the tag already exists it does nothing, so pushing
+# more commits without bumping VERSION never creates a duplicate release.
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Create tag and release if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "Tag ${TAG} already exists, nothing to do."
+            exit 0
+          fi
+          echo "Building debug APK for release ${TAG}."
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          ASSET="OwnPBX-${TAG}-debug.apk"
+          cp "${APK}" "${ASSET}"
+          echo "Creating release ${TAG} from main."
+          gh release create "${TAG}" --target main --title "${TAG}" --generate-notes "${ASSET}"
