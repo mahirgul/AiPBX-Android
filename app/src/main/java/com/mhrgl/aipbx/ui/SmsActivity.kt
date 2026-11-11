@@ -1,5 +1,7 @@
 package com.mhrgl.aipbx.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -8,25 +10,38 @@ import android.text.format.DateUtils
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.TypedValue
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.data.ApiClient
 import com.mhrgl.aipbx.data.AppPreferences
 import com.mhrgl.aipbx.data.ChatUploadPrep
+import com.mhrgl.aipbx.data.SimpleImageLoader
 import com.mhrgl.aipbx.databinding.ActivitySmsBinding
 import com.mhrgl.aipbx.databinding.ItemSmsMessageBinding
 import com.mhrgl.aipbx.databinding.ItemSmsThreadBinding
+import com.mhrgl.aipbx.model.SmsGif
 import com.mhrgl.aipbx.model.SmsMessage
 import com.mhrgl.aipbx.model.SmsNumber
 import com.mhrgl.aipbx.model.SmsThread
 import java.time.OffsetDateTime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -68,6 +83,12 @@ class SmsActivity : BaseActivity() {
     private var configLoaded = false
     private var imagePrepared: ChatUploadPrep.Prepared? = null
 
+    // --- Reply / GIF state ---
+    private var replyToId = 0
+    private var gifUrl: String? = null
+    /** The server has a GIPHY key: the GIF button searches; otherwise it picks a GIF file. */
+    private var gifSearch = false
+
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri == null) return@registerForActivityResult
@@ -106,9 +127,17 @@ class SmsActivity : BaseActivity() {
         binding.rvMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.rvMessages.adapter = messageAdapter
         binding.btnAttach.setOnClickListener { pickImageLauncher.launch("image/*") }
+        binding.btnEmoji.setOnClickListener { showEmojiPicker() }
+        binding.btnGif.setOnClickListener {
+            if (gifSearch) showGifPicker() else pickImageLauncher.launch("image/gif")
+        }
+        binding.btnReplyCancel.setOnClickListener { clearReply() }
+        binding.btnGifRemove.setOnClickListener { clearGif() }
+        binding.btnDeleteThread.setOnClickListener { confirmDeleteThread(openNumberId, openPeer) }
         binding.btnSendSms.setOnClickListener { submitSend() }
         binding.btnSendNew.setOnClickListener { submitNew() }
         loadThreads()
+        loadConfig(quiet = true)
     }
 
     // --- Screens ---
@@ -120,6 +149,7 @@ class SmsActivity : BaseActivity() {
         binding.frameList.visibility = View.VISIBLE
         binding.btnNew.visibility = View.VISIBLE
         binding.btnRefresh.visibility = View.VISIBLE
+        binding.btnDeleteThread.visibility = View.GONE
         binding.tvTitle.setText(R.string.sms_title)
         loadThreads()
     }
@@ -134,10 +164,13 @@ class SmsActivity : BaseActivity() {
         binding.frameThread.visibility = View.VISIBLE
         binding.btnNew.visibility = View.GONE
         binding.btnRefresh.visibility = View.VISIBLE
+        binding.btnDeleteThread.visibility = View.VISIBLE
         binding.tvTitle.text = displayName(thread)
         imagePrepared?.cleanup()
         imagePrepared = null
         binding.tvAttachName.visibility = View.GONE
+        clearReply()
+        clearGif()
         loadThread()
     }
 
@@ -148,6 +181,7 @@ class SmsActivity : BaseActivity() {
         binding.scrollNew.visibility = View.VISIBLE
         binding.btnNew.visibility = View.GONE
         binding.btnRefresh.visibility = View.GONE
+        binding.btnDeleteThread.visibility = View.GONE
         binding.tvTitle.setText(R.string.sms_new)
         if (!configLoaded) loadConfig()
     }
@@ -194,7 +228,7 @@ class SmsActivity : BaseActivity() {
         }
     }
 
-    private fun loadConfig() {
+    private fun loadConfig(quiet: Boolean = false) {
         val url = prefs.serverUrl
         val token = prefs.token ?: return
         lifecycleScope.launch {
@@ -202,6 +236,7 @@ class SmsActivity : BaseActivity() {
                 .getSmsConfig(url, token)
                 .onSuccess { res ->
                     numbers = res.numbers.orEmpty()
+                    gifSearch = res.gifSearch
                     configLoaded = true
                     val labels = numbers.map { n ->
                         if (n.label.isNullOrBlank()) n.number.orEmpty()
@@ -215,7 +250,7 @@ class SmsActivity : BaseActivity() {
                         )
                     adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                     binding.spinnerSender.adapter = adapter
-                    if (numbers.isEmpty()) {
+                    if (numbers.isEmpty() && !quiet) {
                         Toast.makeText(
                                 this@SmsActivity,
                                 getString(R.string.sms_no_numbers),
@@ -225,6 +260,7 @@ class SmsActivity : BaseActivity() {
                     }
                 }
                 .onFailure {
+                    if (quiet) return@onFailure
                     Toast.makeText(
                             this@SmsActivity,
                             getString(R.string.sms_config_failed),
@@ -241,7 +277,8 @@ class SmsActivity : BaseActivity() {
         if (sending) return
         val text = binding.etMessage.text.toString().trim()
         val image = imagePrepared
-        if (text.isEmpty() && image == null) {
+        val gif = gifUrl
+        if (text.isEmpty() && image == null && gif == null) {
             Toast.makeText(this, getString(R.string.sms_text_required), Toast.LENGTH_LONG).show()
             return
         }
@@ -258,6 +295,8 @@ class SmsActivity : BaseActivity() {
                     openPeer,
                     text,
                     if (image != null) listOf(image.file) else emptyList(),
+                    replyTo = replyToId,
+                    gifUrl = gif,
                 )
             if (result.isSuccess) {
                 clearComposer()
@@ -285,6 +324,226 @@ class SmsActivity : BaseActivity() {
         imagePrepared?.cleanup()
         imagePrepared = null
         binding.tvAttachName.visibility = View.GONE
+        clearReply()
+        clearGif()
+    }
+
+    // --- Reply ---
+
+    private fun startReply(message: SmsMessage) {
+        replyToId = message.id
+        val who = if (message.direction == "out") getString(R.string.sms_you) else openName.ifBlank { openPeer }
+        val snippet = message.body.orEmpty().ifBlank {
+            if (!message.media.isNullOrEmpty()) getString(R.string.sms_quote_picture) else ""
+        }
+        binding.tvReplyPreview.text = getString(R.string.sms_replying_to, who) + "\n" + snippet
+        binding.replyBar.visibility = View.VISIBLE
+        binding.etMessage.requestFocus()
+    }
+
+    private fun clearReply() {
+        replyToId = 0
+        binding.replyBar.visibility = View.GONE
+    }
+
+    // --- Message actions (long press): reply, copy, delete ---
+
+    private fun showMessageActions(message: SmsMessage) {
+        val labels = mutableListOf(getString(R.string.sms_reply))
+        val hasText = !message.body.isNullOrBlank()
+        if (hasText) labels.add(getString(R.string.sms_copy))
+        labels.add(getString(R.string.sms_delete))
+        AlertDialog.Builder(this)
+            .setItems(labels.toTypedArray()) { _, which ->
+                when (labels[which]) {
+                    getString(R.string.sms_reply) -> startReply(message)
+                    getString(R.string.sms_copy) -> {
+                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cm.setPrimaryClip(ClipData.newPlainText("sms", message.body.orEmpty()))
+                        Toast.makeText(this, getString(R.string.sms_copied), Toast.LENGTH_SHORT).show()
+                    }
+                    getString(R.string.sms_delete) -> confirmDeleteMessage(message)
+                }
+            }
+            .show()
+    }
+
+    private fun confirmDeleteMessage(message: SmsMessage) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.sms_delete_message_title)
+            .setMessage(R.string.sms_delete_message_body)
+            .setNegativeButton(R.string.sms_cancel, null)
+            .setPositiveButton(R.string.sms_delete) { _, _ ->
+                val token = prefs.token ?: return@setPositiveButton
+                lifecycleScope.launch {
+                    apiClient
+                        .deleteSmsMessage(prefs.serverUrl, token, openNumberId, message.id)
+                        .onSuccess {
+                            if (replyToId == message.id) clearReply()
+                            loadThread()
+                        }
+                        .onFailure {
+                            Toast.makeText(this@SmsActivity, getString(R.string.sms_delete_failed, it.message ?: ""), Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
+            .show()
+    }
+
+    private fun confirmDeleteThread(numberId: Int, peer: String) {
+        if (numberId <= 0 || peer.isBlank()) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.sms_delete_thread_title)
+            .setMessage(R.string.sms_delete_thread_body)
+            .setNegativeButton(R.string.sms_cancel, null)
+            .setPositiveButton(R.string.sms_delete) { _, _ ->
+                val token = prefs.token ?: return@setPositiveButton
+                lifecycleScope.launch {
+                    apiClient
+                        .deleteSmsThread(prefs.serverUrl, token, numberId, peer)
+                        .onSuccess {
+                            Toast.makeText(this@SmsActivity, getString(R.string.sms_deleted), Toast.LENGTH_SHORT).show()
+                            if (screen == Screen.THREAD) showList() else loadThreads()
+                        }
+                        .onFailure {
+                            Toast.makeText(this@SmsActivity, getString(R.string.sms_delete_failed, it.message ?: ""), Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
+            .show()
+    }
+
+    // --- Emoji ---
+
+    private val emojis =
+        ("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😜 🤪 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😫 " +
+            "😩 🥺 😢 😭 😤 😠 😡 🤯 😳 😱 😨 😰 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😴 🤤 😷 🤒 🤕 🤢 🤮 🥴 " +
+            "😵 🤠 👍 👎 👌 ✌️ 🤞 🤟 🤘 👏 🙌 👐 🙏 💪 👋 👀 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💯 🔥 ✨ ⭐ 🎉 " +
+            "🎊 🎁 🎂 ☕ 🍕 🍔 🍺 🍷 ⚽ 🏀 🚗 ✈️ 🏠 📞 📱 💻 📷 🎵 ✅ ❌ ⚠️ ❓ ❗ 💤 🌞 🌙 🌧️ ❄️ 🐶 🐱")
+            .split(" ")
+
+    private fun showEmojiPicker() {
+        val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt() }
+        val grid = RecyclerView(this).apply {
+            layoutManager = GridLayoutManager(this@SmsActivity, 7)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+        }
+        val dialog = AlertDialog.Builder(this).setView(grid).create()
+        grid.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+                val tv = TextView(parent.context).apply {
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+                    gravity = Gravity.CENTER
+                    setPadding(0, dp(6), 0, dp(6))
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                }
+                return object : RecyclerView.ViewHolder(tv) {}
+            }
+            override fun getItemCount() = emojis.size
+            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+                val tv = holder.itemView as TextView
+                tv.text = emojis[position]
+                tv.setOnClickListener {
+                    insertIntoMessage(emojis[position])
+                    dialog.dismiss()
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun insertIntoMessage(str: String) {
+        val et = binding.etMessage
+        val start = et.selectionStart.coerceAtLeast(0)
+        val end = et.selectionEnd.coerceAtLeast(0)
+        et.text.replace(minOf(start, end), maxOf(start, end), str)
+        et.requestFocus()
+    }
+
+    // --- GIF (search through the server's GIPHY key) ---
+
+    private fun showGifPicker() {
+        val token = prefs.token ?: return
+        val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt() }
+        val gifs = mutableListOf<SmsGif>()
+        val search = EditText(this).apply {
+            hint = getString(R.string.sms_gif_search_hint)
+            setSingleLine()
+        }
+        val grid = RecyclerView(this).apply {
+            layoutManager = GridLayoutManager(this@SmsActivity, 3)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(360))
+        }
+        val powered = TextView(this).apply {
+            text = getString(R.string.sms_gif_powered)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setPadding(0, dp(4), 0, 0)
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(4))
+            addView(search)
+            addView(grid)
+            addView(powered)
+        }
+        val dialog = AlertDialog.Builder(this).setView(box).setNegativeButton(R.string.sms_cancel, null).create()
+        grid.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+                val iv = ImageView(parent.context).apply {
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    layoutParams = ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(96)).apply {
+                        setMargins(dp(2), dp(2), dp(2), dp(2))
+                    }
+                }
+                return object : RecyclerView.ViewHolder(iv) {}
+            }
+            override fun getItemCount() = gifs.size
+            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+                val g = gifs[position]
+                val iv = holder.itemView as ImageView
+                SimpleImageLoader.load(g.preview.orEmpty(), iv, maxDim = 300)
+                iv.setOnClickListener {
+                    pickGif(g)
+                    dialog.dismiss()
+                }
+            }
+        }
+        var searchJob: Job? = null
+        fun searchGifs(query: String) {
+            searchJob?.cancel()
+            searchJob = lifecycleScope.launch {
+                delay(350)
+                apiClient
+                    .searchSmsGifs(prefs.serverUrl, token, query)
+                    .onSuccess { res ->
+                        gifs.clear()
+                        gifs.addAll(res.gifs.orEmpty().filter { !it.url.isNullOrBlank() })
+                        grid.adapter?.notifyDataSetChanged()
+                    }
+                    .onFailure {
+                        Toast.makeText(this@SmsActivity, getString(R.string.sms_gif_failed, it.message ?: ""), Toast.LENGTH_LONG).show()
+                    }
+            }
+        }
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) = searchGifs(s?.toString().orEmpty())
+        })
+        dialog.setOnDismissListener { searchJob?.cancel() }
+        dialog.show()
+        searchGifs("")
+    }
+
+    private fun pickGif(g: SmsGif) {
+        gifUrl = g.url
+        SimpleImageLoader.load(g.preview.orEmpty(), binding.ivGifPreview, maxDim = 200)
+        binding.gifChip.visibility = View.VISIBLE
+    }
+
+    private fun clearGif() {
+        gifUrl = null
+        binding.gifChip.visibility = View.GONE
     }
 
     /** True when the failure is a timeout — the send may have completed anyway. */
@@ -443,6 +702,10 @@ class SmsActivity : BaseActivity() {
                 b.tvUnread.visibility = View.GONE
             }
             b.root.setOnClickListener { showThread(thread) }
+            b.root.setOnLongClickListener {
+                confirmDeleteThread(thread.numberId, thread.peer.orEmpty())
+                true
+            }
         }
     }
 
@@ -476,6 +739,26 @@ class SmsActivity : BaseActivity() {
             b.bubble.layoutParams = params
             b.tvBody.text = message.body.orEmpty()
             b.tvBody.visibility = if (message.body.isNullOrBlank()) View.GONE else View.VISIBLE
+            val quote = message.replyTo
+            if (quote != null) {
+                b.tvQuote.text =
+                    when {
+                        quote.deleted -> getString(R.string.sms_quote_deleted)
+                        else -> {
+                            val body = quote.body.orEmpty().ifBlank {
+                                if (quote.media > 0) getString(R.string.sms_quote_picture) else ""
+                            }
+                            if (quote.direction == "out") getString(R.string.sms_you) + ": " + body else body
+                        }
+                    }
+                b.tvQuote.visibility = View.VISIBLE
+            } else {
+                b.tvQuote.visibility = View.GONE
+            }
+            b.bubble.setOnLongClickListener {
+                showMessageActions(message)
+                true
+            }
             val media = message.media.orEmpty()
             if (media.isNotEmpty()) {
                 b.tvMedia.text =

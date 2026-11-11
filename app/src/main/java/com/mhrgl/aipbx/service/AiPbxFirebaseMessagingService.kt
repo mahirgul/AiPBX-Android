@@ -33,6 +33,13 @@ class AiPbxFirebaseMessagingService : FirebaseMessagingService() {
         Log.i(TAG, "FCM Message received from: ${remoteMessage.from}, action=$action")
 
         when (action) {
+            "session_revoked" -> {
+                // "Sign out" on the web portal (My Phone). The server has already revoked this
+                // session's token; signing out here makes it immediate instead of waiting for the
+                // app's next request to be refused.
+                Log.i(TAG, "Signed out from the web portal")
+                SessionExpiry.signOut(this, L10n.str(R.string.session_signed_out_remote))
+            }
             "incoming_call" -> {
                 Log.i(TAG, "Waking up PbxForegroundService for incoming call...")
 

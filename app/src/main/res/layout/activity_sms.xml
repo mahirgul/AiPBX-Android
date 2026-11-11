@@ -45,6 +45,16 @@
             app:tint="@color/text_primary" />
 
         <ImageButton
+            android:id="@+id/btnDeleteThread"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/sms_delete_thread"
+            android:src="@drawable/ic_delete"
+            android:visibility="gone"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
             android:id="@+id/btnRefresh"
             android:layout_width="36dp"
             android:layout_height="36dp"
@@ -105,6 +115,86 @@
             android:clipToPadding="false"
             android:padding="8dp" />
 
+        <!-- Reply being written: the quoted message, with a cancel button -->
+        <LinearLayout
+            android:id="@+id/replyBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/card_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_reply"
+                app:tint="@color/primary" />
+
+            <TextView
+                android:id="@+id/tvReplyPreview"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <ImageButton
+                android:id="@+id/btnReplyCancel"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/sms_cancel_reply"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- GIF picked from the search, sent with the next message -->
+        <LinearLayout
+            android:id="@+id/gifChip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/card_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/ivGifPreview"
+                android:layout_width="64dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/sms_gif_attached"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/sms_gif_attached"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <ImageButton
+                android:id="@+id/btnGifRemove"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/sms_gif_remove"
+                android:padding="6dp"
+                android:src="@drawable/ic_close"
+                app:tint="@color/text_secondary" />
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -113,6 +203,26 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:padding="8dp">
+
+            <ImageButton
+                android:id="@+id/btnEmoji"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/sms_emoji"
+                android:padding="8dp"
+                android:src="@drawable/ic_emoji"
+                app:tint="@color/text_secondary" />
+
+            <ImageButton
+                android:id="@+id/btnGif"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/sms_gif"
+                android:padding="6dp"
+                android:src="@drawable/ic_gif"
+                app:tint="@color/text_secondary" />
 
             <ImageButton
                 android:id="@+id/btnAttach"

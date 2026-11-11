@@ -170,6 +170,8 @@ data class SmsNumber(
 data class SmsConfigResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("numbers") val numbers: List<SmsNumber>? = null,
+    /** True when the server has a GIPHY key: the GIF button searches; otherwise it picks a GIF file. */
+    @SerializedName("gif_search") val gifSearch: Boolean = false,
     @SerializedName("error") val error: String? = null,
 )
 
@@ -210,6 +212,30 @@ data class SmsMessage(
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("is_read") val isRead: Boolean = false,
     @SerializedName("media") val media: List<SmsMedia>? = null,
+    /** The message this one answers (a reply), or null. */
+    @SerializedName("reply_to") val replyTo: SmsReplyRef? = null,
+)
+
+/** The quoted message of a reply; [deleted] when it was deleted since. */
+data class SmsReplyRef(
+    @SerializedName("id") val id: Int,
+    @SerializedName("body") val body: String? = null,
+    @SerializedName("direction") val direction: String? = null,
+    @SerializedName("media") val media: Int = 0,
+    @SerializedName("deleted") val deleted: Boolean = false,
+)
+
+/** One GIF from the server's GIPHY search: [preview] to show, [url] to send. */
+data class SmsGif(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("preview") val preview: String? = null,
+    @SerializedName("url") val url: String? = null,
+)
+
+data class SmsGifsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("gifs") val gifs: List<SmsGif>? = null,
+    @SerializedName("error") val error: String? = null,
 )
 
 data class SmsThreadResponse(

@@ -645,6 +645,8 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
         peer: String,
         text: String,
         imageFiles: List<File> = emptyList(),
+        replyTo: Int = 0,
+        gifUrl: String? = null,
     ): Result<SmsSendResponse> =
         withContext(Dispatchers.IO) {
             try {
@@ -656,11 +658,14 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                         .addFormDataPart("number_id", numberId.toString())
                         .addFormDataPart("peer", peer.trim())
                         .addFormDataPart("text", text)
+                if (replyTo > 0) builder.addFormDataPart("reply_to", replyTo.toString())
+                if (!gifUrl.isNullOrBlank()) builder.addFormDataPart("gif_url", gifUrl)
                 for (file in imageFiles) {
+                    val mime = if (file.name.endsWith(".gif", ignoreCase = true)) "image/gif" else "image/jpeg"
                     builder.addFormDataPart(
                         "media[]",
                         file.name,
-                        file.asRequestBody("image/jpeg".toMediaType()),
+                        file.asRequestBody(mime.toMediaType()),
                     )
                 }
                 val request =
@@ -680,6 +685,64 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                                 result?.error ?: L10n.str(R.string.sms_send_failed, response.code)
                             )
                         )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** Deletes one message from the PBX (it cannot unsend a text the peer already has). */
+    suspend fun deleteSmsMessage(baseUrl: String, token: String, numberId: Int, messageId: Int): Result<Unit> =
+        postSmsJson(baseUrl, token, JSONObject().apply {
+            put("action", "delete")
+            put("number_id", numberId)
+            put("message_id", messageId)
+        })
+
+    /** Deletes a whole conversation (one number with one peer) from the PBX. */
+    suspend fun deleteSmsThread(baseUrl: String, token: String, numberId: Int, peer: String): Result<Unit> =
+        postSmsJson(baseUrl, token, JSONObject().apply {
+            put("action", "delete_thread")
+            put("number_id", numberId)
+            put("peer", peer)
+        })
+
+    private suspend fun postSmsJson(baseUrl: String, token: String, body: JSONObject): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val request =
+                    Request.Builder()
+                        .url("${baseUrl.trim().trimEnd('/')}/api/mobile/sms.php")
+                        .addHeader("Authorization", "Bearer $token")
+                        .post(body.toString().toRequestBody(jsonMediaType))
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsSendResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success) Result.success(Unit)
+                    else Result.failure(Exception(result?.error ?: "HTTP ${response.code}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** GIF search through the server (GIPHY); an empty [query] gives trending GIFs. */
+    suspend fun searchSmsGifs(baseUrl: String, token: String, query: String): Result<SmsGifsResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val q = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+                val request =
+                    Request.Builder()
+                        .url("${baseUrl.trim().trimEnd('/')}/api/mobile/sms.php?action=gifs&q=$q")
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsGifsResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success) Result.success(result)
+                    else Result.failure(Exception(result?.error ?: "HTTP ${response.code}"))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
