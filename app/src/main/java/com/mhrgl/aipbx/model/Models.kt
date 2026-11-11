@@ -99,6 +99,66 @@ data class VoicemailResponse(
     @SerializedName("error") val error: String?
 )
 
+/** One fax, received or sent (api/mobile/fax.php). Unused side's fields are null. */
+data class FaxMessage(
+    @SerializedName("id") val id: String,
+    @SerializedName("did_extension") val didExtension: String? = null,
+    @SerializedName("caller_id") val callerId: String? = null,
+    @SerializedName("sender_extension") val senderExtension: String? = null,
+    @SerializedName("destination_number") val destinationNumber: String? = null,
+    @SerializedName("pages") val pages: Int = 0,
+    @SerializedName("file_size") val fileSize: Long = 0,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("error_message") val errorMessage: String? = null,
+    @SerializedName("is_read") val isRead: Boolean = false,
+    @SerializedName("received_at") val receivedAt: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("completed_at") val completedAt: String? = null,
+)
+
+data class FaxListResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("faxes") val faxes: List<FaxMessage>? = null,
+    @SerializedName("total_count") val totalCount: Int = 0,
+    @SerializedName("total_pages") val totalPages: Int = 0,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** A saved cover-page template from the fax config. */
+data class FaxTemplate(
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("company") val company: String? = null,
+    @SerializedName("notice") val notice: String? = null,
+    @SerializedName("logo") val logo: String? = null,
+)
+
+data class FaxConfigResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("sendable_numbers") val sendableNumbers: List<String>? = null,
+    @SerializedName("cover_mode") val coverMode: String? = null,
+    @SerializedName("cover_company") val coverCompany: String? = null,
+    @SerializedName("cover_notice") val coverNotice: String? = null,
+    @SerializedName("cover_logo") val coverLogo: String? = null,
+    @SerializedName("templates") val templates: List<FaxTemplate>? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** Result of sending a fax (or of resending one): the new fax id and its page count. */
+data class FaxSendResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("fax_id") val faxId: String? = null,
+    @SerializedName("pages") val pages: Int? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** Result of a mark_read / delete fax action. */
+data class FaxActionResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("fax_id") val faxId: String? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
 data class CallHistoryResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("extension") val extension: String?,

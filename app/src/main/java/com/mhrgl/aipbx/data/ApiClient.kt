@@ -301,6 +301,212 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             }
         }
 
+    // --- FAX API METHODS (api/mobile/fax.php) ---
+
+    /** Received ("received") or sent ("sent") faxes, newest first. */
+    suspend fun getFaxList(
+        baseUrl: String,
+        token: String,
+        type: String,
+        page: Int = 1,
+        limit: Int = 50,
+        search: String? = null,
+        dateFrom: String? = null,
+        dateTo: String? = null,
+    ): Result<FaxListResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val enc = { v: String -> java.net.URLEncoder.encode(v, "UTF-8") }
+                var url =
+                    "$cleanUrl/api/mobile/fax.php?action=list&type=${enc(type)}&page=$page&limit=$limit"
+                if (!search.isNullOrBlank()) url += "&search=${enc(search)}"
+                if (!dateFrom.isNullOrBlank()) url += "&date_from=${enc(dateFrom)}"
+                if (!dateTo.isNullOrBlank()) url += "&date_to=${enc(dateTo)}"
+                val request =
+                    Request.Builder()
+                        .url(url)
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", FaxListResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.fax_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** Sendable DIDs, cover defaults and saved cover templates for the send screen. */
+    suspend fun getFaxConfig(baseUrl: String, token: String): Result<FaxConfigResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/fax.php?action=config")
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", FaxConfigResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.fax_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Downloads a fax PDF into [target] with this client (session header and the app's TLS
+     * settings). [kind] is "received" or "sent".
+     */
+    suspend fun downloadFax(
+        baseUrl: String,
+        token: String,
+        id: String,
+        kind: String,
+        target: File,
+    ): Result<File> =
+        withContext(Dispatchers.IO) {
+            try {
+                val url =
+                    "${baseUrl.trim().trimEnd('/')}/api/mobile/fax.php?action=download&id=" +
+                        java.net.URLEncoder.encode(id, "UTF-8") +
+                        "&kind=" +
+                        java.net.URLEncoder.encode(kind, "UTF-8")
+                val request =
+                    Request.Builder()
+                        .url(url)
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val body = response.body
+                    if (!response.isSuccessful || body == null)
+                        return@withContext Result.failure(Exception("HTTP ${response.code}"))
+                    target.outputStream().use { out -> body.byteStream().copyTo(out) }
+                }
+                Result.success(target)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Sends a fax. PDF mode attaches [pdfFile] as pdf_file; text mode sends [faxText] as
+     * fax_text_content. Only the mode's own part is sent.
+     */
+    suspend fun sendFax(
+        baseUrl: String,
+        token: String,
+        destNumber: String,
+        composeMode: String,
+        senderDid: String,
+        coverEnabled: Boolean,
+        coverTo: String,
+        coverSubject: String,
+        coverMessage: String,
+        templateId: String?,
+        pdfFile: File?,
+        faxText: String?,
+    ): Result<FaxSendResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val builder =
+                    MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("action", "send")
+                        .addFormDataPart("dest_number", destNumber.trim())
+                        .addFormDataPart("compose_mode", composeMode)
+                        .addFormDataPart("sender_did", senderDid.trim())
+                        .addFormDataPart("cover_enabled", if (coverEnabled) "1" else "0")
+                        .addFormDataPart("cover_to", coverTo)
+                        .addFormDataPart("cover_subject", coverSubject)
+                        .addFormDataPart("cover_message", coverMessage)
+                if (!templateId.isNullOrBlank()) builder.addFormDataPart("template_id", templateId)
+                if (composeMode == "pdf" && pdfFile != null) {
+                    builder.addFormDataPart(
+                        "pdf_file",
+                        pdfFile.name,
+                        pdfFile.asRequestBody("application/pdf".toMediaType()),
+                    )
+                } else if (composeMode == "text") {
+                    builder.addFormDataPart("fax_text_content", faxText.orEmpty())
+                }
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/fax.php?action=send")
+                        .addHeader("Authorization", "Bearer $token")
+                        .post(builder.build())
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", FaxSendResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(
+                                result?.error ?: L10n.str(R.string.fax_send_failed, response.code)
+                            )
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** action "mark_read" or "resend" for a fax; "delete" also needs [kind]. */
+    suspend fun faxAction(
+        baseUrl: String,
+        token: String,
+        action: String,
+        id: String,
+        kind: String? = null,
+    ): Result<FaxActionResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body =
+                    JSONObject()
+                        .apply {
+                            put("action", action)
+                            put("id", id)
+                            if (kind != null) put("kind", kind)
+                        }
+                        .toString()
+                val request =
+                    Request.Builder()
+                        .url("${baseUrl.trim().trimEnd('/')}/api/mobile/fax.php")
+                        .addHeader("Authorization", "Bearer $token")
+                        .post(body.toRequestBody(jsonMediaType))
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", FaxActionResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else Result.failure(Exception(result?.error ?: "HTTP ${response.code}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     suspend fun getCallHistory(
         baseUrl: String,
         token: String,

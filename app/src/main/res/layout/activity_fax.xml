@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_light"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@color/card_bg"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/ui_back"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/fax_title"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnSend"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/fax_send_title"
+            android:src="@drawable/ic_send"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnRefresh"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/ui_refresh"
+            android:src="@drawable/ic_history"
+            app:tint="@color/text_primary" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/tabRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/btnTabReceived"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:background="@drawable/chip_tab_btn_bg"
+            android:gravity="center"
+            android:text="@string/fax_received"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnTabSent"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/chip_tab_btn_bg"
+            android:gravity="center"
+            android:text="@string/fax_sent"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/frameList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFax"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingVertical="4dp" />
+
+        <TextView
+            android:id="@+id/tvEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="32dp"
+            android:text="@string/fax_empty_received"
+            android:textColor="@color/text_secondary"
+            android:textSize="15sp"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <ScrollView
+        android:id="@+id/scrollSend"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <EditText
+                android:id="@+id/etDest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/fax_dest_hint"
+                android:inputType="phone"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/fax_sender"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <Spinner
+                android:id="@+id/spinnerSender"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
+            <RadioGroup
+                android:id="@+id/rgCompose"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbPdf"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="@string/fax_compose_pdf"
+                    android:textColor="@color/text_primary" />
+
+                <RadioButton
+                    android:id="@+id/rbText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="24dp"
+                    android:text="@string/fax_compose_text"
+                    android:textColor="@color/text_primary" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:id="@+id/rowPdf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnPickPdf"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/fax_pick_pdf" />
+
+                <TextView
+                    android:id="@+id/tvPdfName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:ellipsize="middle"
+                    android:maxLines="1"
+                    android:text="@string/fax_no_pdf"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/etFaxText"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="8dp"
+                android:gravity="top"
+                android:hint="@string/fax_text_hint"
+                android:inputType="textMultiLine"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:visibility="gone" />
+
+            <CheckBox
+                android:id="@+id/cbCover"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/fax_cover"
+                android:textColor="@color/text_primary" />
+
+            <LinearLayout
+                android:id="@+id/coverFields"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <EditText
+                    android:id="@+id/etCoverTo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/fax_cover_to_hint"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary" />
+
+                <EditText
+                    android:id="@+id/etCoverSubject"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/fax_cover_subject_hint"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary" />
+
+                <EditText
+                    android:id="@+id/etCoverMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:gravity="top"
+                    android:hint="@string/fax_cover_message_hint"
+                    android:inputType="textMultiLine"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_secondary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/fax_template"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <Spinner
+                    android:id="@+id/spinnerTemplate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnSendFax"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/ui_send" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

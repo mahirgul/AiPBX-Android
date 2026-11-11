@@ -114,6 +114,13 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
 
+        <!-- Fax: received/sent lists, PDF viewer, send screen -->
+        <activity
+            android:name=".ui.FaxActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- System & Diagnostic Log Viewer Activity -->
         <activity
             android:name=".ui.LogViewerActivity"

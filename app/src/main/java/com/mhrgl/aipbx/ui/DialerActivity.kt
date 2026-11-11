@@ -377,6 +377,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         binding.tvUserExt.text = if (name.isNotBlank() && name != ext) "$ext ($name)" else ext
 
         binding.btnVoicemail.setOnClickListener { VoicemailActivity.start(this) }
+        binding.btnFax.setOnClickListener { FaxActivity.start(this) }
 
         binding.btnLogout.setOnClickListener {
             AlertDialog.Builder(this)
