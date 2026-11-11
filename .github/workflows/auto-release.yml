@@ -42,20 +42,59 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Set up release signing key (from repository secrets)
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Android only installs an update over an existing app when both APKs
+          # are signed with the SAME key. A debug build is signed with the build
+          # machine's throwaway debug key, so phones refuse to update from one
+          # release to the next ("App not installed"). With the four secrets set,
+          # every release is signed with one permanent key and updates install.
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > release-key.jks
+            {
+              echo "storeFile=release-key.jks"
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "keyPassword=$KEY_PASSWORD"
+            } > keystore.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set: releasing a debug-signed APK. Phones may refuse to install it over a previous release."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create tag and release if missing
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNED: ${{ steps.keystore.outputs.signed }}
         run: |
           TAG="v${{ steps.version.outputs.version }}"
           if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
             echo "Tag ${TAG} already exists, nothing to do."
             exit 0
           fi
-          echo "Building debug APK for release ${TAG}."
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          ASSET="OwnPBX-${TAG}-debug.apk"
+          if [ "$SIGNED" = "true" ]; then
+            echo "Building release-signed APK for ${TAG}."
+            ./gradlew assembleRelease --stacktrace
+            APK="app/build/outputs/apk/release/app-release.apk"
+            ASSET="OwnPBX-${TAG}.apk"
+          else
+            echo "Building debug APK for ${TAG}."
+            ./gradlew assembleDebug --stacktrace
+            APK="app/build/outputs/apk/debug/app-debug.apk"
+            ASSET="OwnPBX-${TAG}-debug.apk"
+          fi
           cp "${APK}" "${ASSET}"
           echo "Creating release ${TAG} from main."
           gh release create "${TAG}" --target main --title "${TAG}" --generate-notes "${ASSET}"
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f release-key.jks keystore.properties

@@ -1,3 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OwnPBX launcher icon (foreground of the adaptive icon; background is white).
+  Drawn for the 72dp visible area of the 108dp adaptive canvas: a red disc
+  (r=34) leaves a thin white ring at the launcher's mask edge, and a white
+  speech bubble with three red dots sits in the middle — the red twin of the
+  blue "My Phone" icon.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -5,25 +13,17 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#FFEF4444"
-        android:pathData="M11,54a43,43 0 1,0 86,0a43,43 0 1,0 -86,0z"/>
-    <group
-        android:pivotX="0"
-        android:pivotY="0"
-        android:scaleX="3.14"
-        android:scaleY="3.14"
-        android:translateX="16.3"
-        android:translateY="16.3">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M20,2H4c-1.1,0 -1.99,0.9 -1.99,2L2,22l4,-4h14c1.1,0 2,-0.9 2,-2V4c0,-1.1 -0.9,-2 -2,-2z"/>
-        <path
-            android:fillColor="#FF000000"
-            android:pathData="M6.5,11a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0z"/>
-        <path
-            android:fillColor="#FF000000"
-            android:pathData="M10.5,11a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0z"/>
-        <path
-            android:fillColor="#FF000000"
-            android:pathData="M14.5,11a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0z"/>
-    </group>
+        android:pathData="M20,54a34,34 0 1,0 68,0a34,34 0 1,0 -68,0z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,39 H71 A6,6 0 0 1 77,45 V59 A6,6 0 0 1 71,65 H45 L37,72 L39,64.7 A6,6 0 0 1 31,59 V45 A6,6 0 0 1 37,39 Z"/>
+    <path
+        android:fillColor="#FFEF4444"
+        android:pathData="M42.3,52a2.7,2.7 0 1,0 5.4,0a2.7,2.7 0 1,0 -5.4,0z"/>
+    <path
+        android:fillColor="#FFEF4444"
+        android:pathData="M51.3,52a2.7,2.7 0 1,0 5.4,0a2.7,2.7 0 1,0 -5.4,0z"/>
+    <path
+        android:fillColor="#FFEF4444"
+        android:pathData="M60.3,52a2.7,2.7 0 1,0 5.4,0a2.7,2.7 0 1,0 -5.4,0z"/>
 </vector>
