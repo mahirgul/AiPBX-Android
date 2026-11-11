@@ -8,7 +8,9 @@ import androidx.security.crypto.MasterKey
 import com.mhrgl.aipbx.model.LoginResponse
 import com.mhrgl.aipbx.model.SipCredentials
 
-class AppPreferences(context: Context) {
+class AppPreferences(context: Context) : SessionRefreshStore {
+
+    private var sessionGeneration = 0L
 
     private val appContext: Context = context.applicationContext
     private val prefs: SharedPreferences by lazy { createEncryptedPreferences(appContext) }
@@ -19,10 +21,18 @@ class AppPreferences(context: Context) {
     @Volatile private var memoryTurnPass: String? = null
     @Volatile private var memoryFcmApiKey: String? = null
 
+    @get:Synchronized
+    @set:Synchronized
     var serverUrl: String
         get() = prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
-        set(value) = prefs.edit().putString(KEY_SERVER_URL, value.trim().trimEnd('/')).apply()
+        set(value) {
+            val normalized = value.trim().trimEnd('/')
+            if (normalized != serverUrl) sessionGeneration++
+            prefs.edit().putString(KEY_SERVER_URL, normalized).apply()
+        }
 
+    @get:Synchronized
+    @set:Synchronized
     var token: String?
         get() {
             val p = prefs
@@ -30,6 +40,7 @@ class AppPreferences(context: Context) {
         }
         set(value) {
             val p = prefs
+            if (value != token) sessionGeneration++
             memoryToken = value
             if (isEncrypted) {
                 p.edit().putString(KEY_TOKEN, value).apply()
@@ -133,7 +144,29 @@ class AppPreferences(context: Context) {
     val isLoggedIn: Boolean
         get() = !token.isNullOrEmpty() && !extension.isNullOrEmpty() && !sipPassword.isNullOrEmpty()
 
+    @Synchronized
+    override fun sessionSnapshot(): AuthSession? {
+        val currentToken = token?.takeIf { it.isNotEmpty() } ?: return null
+        val server = serverUrl.takeIf { it.isNotEmpty() } ?: return null
+        return AuthSession(server, currentToken, sessionGeneration)
+    }
+
+    @Synchronized
+    override fun saveRefresh(expected: AuthSession, response: LoginResponse): Boolean {
+        if (sessionSnapshot() != expected || !response.success || response.token.isNullOrEmpty()
+            || response.user == null || response.sip == null) return false
+        storeLogin(response)
+        return true
+    }
+
+    @Synchronized
     fun saveLogin(response: LoginResponse) {
+        if (response.user == null || response.sip == null) return
+        sessionGeneration++
+        storeLogin(response)
+    }
+
+    private fun storeLogin(response: LoginResponse) {
         val u = response.user ?: return
         val s = response.sip ?: return
         val rawSipUser = s.sipUsername.ifEmpty { "${u.extension}-mob-webrtc" }
@@ -257,11 +290,6 @@ class AppPreferences(context: Context) {
         get() = prefs.getLong(KEY_SLEEPING_WARNING_SHOWN_AT, 0L)
         set(value) = prefs.edit().putLong(KEY_SLEEPING_WARNING_SHOWN_AT, value).apply()
 
-    /** When this app last opened a browser sign-in (0 = none): see LoginActivity's aipbx://auth. */
-    var browserSignInStartedAt: Long
-        get() = prefs.getLong(KEY_BROWSER_SIGN_IN_STARTED_AT, 0L)
-        set(value) = prefs.edit().putLong(KEY_BROWSER_SIGN_IN_STARTED_AT, value).apply()
-
     /** The automatic battery-optimisation request was shown once (see BatteryPrompt). */
     var batteryPromptShown: Boolean
         get() = prefs.getBoolean(KEY_BATTERY_PROMPT_SHOWN, false) ||
@@ -316,7 +344,9 @@ class AppPreferences(context: Context) {
         get() = prefs.getLong(KEY_LAST_TOKEN_REFRESH_TIME, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_TOKEN_REFRESH_TIME, value).apply()
 
+    @Synchronized
     fun clearAuth() {
+        sessionGeneration++
         memoryToken = null
         memorySipPassword = null
         memoryTurnUser = null
@@ -436,7 +466,6 @@ class AppPreferences(context: Context) {
         private const val KEY_SLEEPING_WARNING = "has_sleeping_warning"
         private const val KEY_APP_LANGUAGE = "app_language"
         private const val KEY_BATTERY_PROMPT_SHOWN = "battery_prompt_shown"
-        private const val KEY_BROWSER_SIGN_IN_STARTED_AT = "browser_sign_in_started_at"
         private const val KEY_SLEEPING_WARNING_SHOWN_AT = "sleeping_warning_shown_at"
         private const val KEY_FULL_SCREEN_PROMPT_SHOWN = "full_screen_prompt_shown"
         private const val KEY_FULL_SCREEN_USER_ALLOWED = "full_screen_user_allowed"

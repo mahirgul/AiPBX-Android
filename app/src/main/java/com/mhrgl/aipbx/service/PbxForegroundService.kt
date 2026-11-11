@@ -169,19 +169,20 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         val now = System.currentTimeMillis()
         // Refresh the token and the TURN session every 24 hours (M5)
         if (now - prefs.lastTokenRefreshTime > 24 * 3600 * 1000L && prefs.isLoggedIn) {
-            val sUrl = prefs.serverUrl
-            val tok = prefs.token
-            if (!sUrl.isNullOrEmpty() && !tok.isNullOrEmpty()) {
+            val session = prefs.sessionSnapshot()
+            if (session != null) {
                 serviceScope.launch {
-                    val res = apiClient.refreshToken(sUrl, tok)
+                    val res = apiClient.refreshToken(session.serverUrl, session.token)
                     res.onSuccess { newLogin ->
                         Log.i(TAG, "Session token & TURN credentials refreshed successfully (M5)")
-                        prefs.saveLogin(newLogin)
+                        if (!prefs.saveRefresh(session, newLogin)) return@onSuccess
                         FcmHelper.initIfConfigured(this@PbxForegroundService, newLogin.pushConfig)
                         prefs.lastTokenRefreshTime = System.currentTimeMillis()
                     }.onFailure { err ->
                         Log.w(TAG, "Session token refresh failed: ${err.message} (M5)")
-                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) handleSessionExpired(err.message)
+                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) {
+                            SessionExpiry.signOut(this@PbxForegroundService, err.message, session)
+                        }
                     }
                 }
             }
@@ -371,19 +372,20 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         // fetch fresh SIP credentials from the server with the session token and save them
         if (sipPass.isNullOrEmpty() || wsUrl.isNullOrEmpty() || domain.isNullOrEmpty()) {
             Log.i(TAG, "SIP credentials missing from encrypted storage. Fetching fresh credentials via session token (T-5)...")
-            val sUrl = prefs.serverUrl
-            val tok = prefs.token
-            if (!sUrl.isNullOrEmpty() && !tok.isNullOrEmpty()) {
+            val session = prefs.sessionSnapshot()
+            if (session != null) {
                 serviceScope.launch {
-                    val res = apiClient.refreshToken(sUrl, tok)
+                    val res = apiClient.refreshToken(session.serverUrl, session.token)
                     res.onSuccess { newLogin ->
                         Log.i(TAG, "Session restored and fresh SIP credentials saved to encrypted storage")
-                        prefs.saveLogin(newLogin)
+                        if (!prefs.saveRefresh(session, newLogin)) return@onSuccess
                         FcmHelper.initIfConfigured(this@PbxForegroundService, newLogin.pushConfig)
                         connectSip()
                     }.onFailure { err ->
                         Log.w(TAG, "Failed to refresh SIP credentials after recovery: ${err.message}")
-                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) handleSessionExpired(err.message)
+                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) {
+                            SessionExpiry.signOut(this@PbxForegroundService, err.message, session)
+                        }
                     }
                 }
             }
@@ -874,16 +876,6 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         }
 
         ChatNotifications.show(this, title, body, message.conversationId, message.senderExt, message.senderName, isGroup = false)
-    }
-
-    /**
-     * The server revoked the session (password reset, account inactive, not renewed for 30 days).
-     * The refresh used to fail and be logged every time, and while the app looked "signed in"
-     * the chat/API did not work. The session is closed and the user is told (see SessionExpiry).
-     */
-    private fun handleSessionExpired(reason: String?) {
-        SessionExpiry.signOut(this, reason)
-        stopSelf()
     }
 
     // Android 15+ (API 35+) Foreground Service Timeout Handler (M19)

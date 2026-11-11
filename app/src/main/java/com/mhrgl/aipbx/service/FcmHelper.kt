@@ -109,23 +109,26 @@ object FcmHelper {
 
     fun unregisterTokenFromServer(context: Context) {
         val prefs = AppPreferences.getInstance(context)
-        val sUrl = prefs.serverUrl
-        val authToken = prefs.token
+        val session = prefs.sessionSnapshot() ?: return
         val deviceId = prefs.deviceUuid
         val fcmToken = prefs.fcmToken
 
-        if (sUrl.isEmpty() || authToken.isNullOrEmpty()) return
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val apiClient = ApiClient { prefs }
-                apiClient.unregisterFcmToken(
-                    baseUrl = sUrl,
-                    token = authToken,
+                // Logout clears preferences immediately. Cleanup uses only the captured
+                // session and must never refresh or borrow a subsequent login's token.
+                val apiClient = ApiClient()
+                val result = apiClient.unregisterFcmToken(
+                    baseUrl = session.serverUrl,
+                    token = session.token,
                     deviceId = deviceId,
                     fcmToken = fcmToken
                 )
-                Log.i(TAG, "FCM token deregistered from AI PBX server.")
+                result.onSuccess {
+                    Log.i(TAG, "FCM token deregistered from AI PBX server.")
+                }.onFailure { error ->
+                    Log.w(TAG, "FCM token deregistration failed: ${error.message}")
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Exception deregistering FCM token from server: ${e.message}")
             }

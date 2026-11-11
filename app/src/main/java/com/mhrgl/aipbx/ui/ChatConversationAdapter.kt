@@ -51,7 +51,7 @@ class ChatConversationAdapter(
                 tvAvatar.text = "👥"
                 tvAvatar.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF4F46E5.toInt())
                 vOnlineDot.visibility = View.GONE
-                tvLastMessage.text = item.lastMessageText ?: itemView.context.getString(R.string.group_members_count, item.memberCount)
+                tvLastMessage.text = item.lastMessageText ?: itemView.context.getString(R.string.group_members_count, item.memberCount.toString())
             } else {
                 val displayName = item.targetName ?: item.targetExt ?: itemView.context.getString(R.string.chat_user_fallback)
                 tvTargetName.text = displayName

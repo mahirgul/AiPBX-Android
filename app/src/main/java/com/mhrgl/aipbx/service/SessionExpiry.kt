@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.mhrgl.aipbx.AiPbxApp
 import com.mhrgl.aipbx.R
+import com.mhrgl.aipbx.data.AuthSession
 import com.mhrgl.aipbx.data.AppPreferences
 import com.mhrgl.aipbx.data.ChatWebSocketManager
 import com.mhrgl.aipbx.ui.LoginActivity
@@ -28,11 +29,12 @@ object SessionExpiry {
     /** LoginActivity shows the "session expired" message when this extra is set. */
     const val EXTRA_SESSION_EXPIRED = "session_expired"
 
-    fun signOut(context: Context, reason: String?) {
+    fun signOut(context: Context, reason: String?, expected: AuthSession? = null) {
         val appContext = context.applicationContext
         val prefs = AppPreferences.getInstance(appContext)
         // Several requests can fail at once; only the first one signs out.
-        synchronized(this) {
+        synchronized(prefs) {
+            if (expected != null && prefs.sessionSnapshot() != expected) return
             if (!prefs.isLoggedIn) return
             Log.w(TAG, "Session rejected by server, signing out: $reason")
             prefs.clearAuth()

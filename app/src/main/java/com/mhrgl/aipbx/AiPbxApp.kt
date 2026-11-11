@@ -41,7 +41,7 @@ class AiPbxApp : Application() {
         })
 
         // A session the server no longer accepts signs the app out (#17).
-        ApiClient.onSessionRejected = { reason -> SessionExpiry.signOut(this, reason) }
+        ApiClient.onSessionRejected = { session, reason -> SessionExpiry.signOut(this, reason, session) }
 
         // Global Uncaught Exception Crash Logger
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()

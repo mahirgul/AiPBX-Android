@@ -2,7 +2,6 @@ package com.mhrgl.aipbx.data
 
 import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.util.L10n
-import android.util.Log
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,7 +13,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
 import org.json.JSONObject
 import org.json.JSONArray
 import com.mhrgl.aipbx.model.*
@@ -26,12 +24,11 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
     companion object {
         /** Called when the server rejects the saved session even after a refresh; set by AiPbxApp. */
         @Volatile
-        var onSessionRejected: ((String?) -> Unit)? = null
+        var onSessionRejected: ((AuthSession, String?) -> Unit)? = null
     }
 
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-    private val refreshLock = Any()
 
     // Certificate validation is left to the PLATFORM — there is no bypass here.
     private val rawClient: OkHttpClient by lazy {
@@ -49,70 +46,8 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
 
     private val client: OkHttpClient by lazy {
         rawClient.newBuilder()
-            .addInterceptor(object : Interceptor {
-                override fun intercept(chain: Interceptor.Chain): Response {
-                    val originalRequest = chain.request()
-                    val response = chain.proceed(originalRequest)
-
-                    if (response.code == 401 &&
-                        !originalRequest.url.encodedPath.endsWith("login.php") &&
-                        !originalRequest.url.encodedPath.endsWith("refresh.php") &&
-                        !originalRequest.url.encodedPath.endsWith("ping.php")
-                    ) {
-                        val prefs = prefsProvider?.invoke()
-                        val oldToken = prefs?.token
-                        val baseUrl = prefs?.serverUrl
-                        if (!oldToken.isNullOrEmpty() && !baseUrl.isNullOrEmpty()) {
-                            response.close()
-                            var retriedRequest: Request? = null
-                            synchronized(refreshLock) {
-                                val currentToken = prefs.token
-                                if (!currentToken.isNullOrEmpty() && currentToken != oldToken) {
-                                    retriedRequest = originalRequest.newBuilder()
-                                        .header("Authorization", "Bearer $currentToken")
-                                        .build()
-                                } else {
-                                    val cleanUrl = baseUrl.trim().trimEnd('/')
-                                    val refreshRequest = Request.Builder()
-                                        .url("$cleanUrl/api/mobile/refresh.php")
-                                        .header("Authorization", "Bearer $oldToken")
-                                        .get()
-                                        .build()
-
-                                    try {
-                                        rawClient.newCall(refreshRequest).execute().use { refreshResp ->
-                                            if (refreshResp.isSuccessful) {
-                                                val body = refreshResp.body?.string() ?: ""
-                                                val loginResult = gson.fromJson(body, LoginResponse::class.java)
-                                                if (loginResult != null && loginResult.success && !loginResult.token.isNullOrEmpty()) {
-                                                    prefs.saveLogin(loginResult)
-                                                    Log.i("ApiClient", "Token successfully refreshed reactively after 401")
-                                                    retriedRequest = originalRequest.newBuilder()
-                                                        .header("Authorization", "Bearer ${loginResult.token}")
-                                                        .build()
-                                                }
-                                            } else {
-                                                Log.w("ApiClient", "Reactive refresh failed with HTTP ${refreshResp.code}")
-                                                // The server no longer accepts this session: sign out instead
-                                                // of showing empty screens while looking signed in (#17).
-                                                if (refreshResp.code == 401 || refreshResp.code == 403) {
-                                                    onSessionRejected?.invoke("HTTP ${refreshResp.code} from refresh.php")
-                                                }
-                                            }
-                                            Unit
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("ApiClient", "Exception during reactive token refresh", e)
-                                    }
-                                }
-                            }
-                            if (retriedRequest != null) {
-                                return chain.proceed(retriedRequest!!)
-                            }
-                        }
-                    }
-                    return response
-                }
+            .addInterceptor(SessionRefreshInterceptor(rawClient, { prefsProvider?.invoke() }) { session, reason ->
+                onSessionRejected?.invoke(session, reason)
             })
             .build()
     }

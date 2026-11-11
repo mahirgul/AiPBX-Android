@@ -86,11 +86,11 @@ class LogViewerActivity : BaseActivity() {
         val q = query.trim()
         if (q.isEmpty()) {
             binding.tvLogText.text = fullLogText
-            binding.tvLogCount.text = getString(R.string.logs_total, logLines.size)
+            binding.tvLogCount.text = getString(R.string.logs_total, logLines.size.toString())
         } else {
             val filtered = logLines.filter { it.contains(q, ignoreCase = true) }
             binding.tvLogText.text = filtered.joinToString("\n")
-            binding.tvLogCount.text = getString(R.string.logs_filtered, filtered.size, logLines.size)
+            binding.tvLogCount.text = getString(R.string.logs_filtered, filtered.size.toString(), logLines.size.toString())
         }
     }
 

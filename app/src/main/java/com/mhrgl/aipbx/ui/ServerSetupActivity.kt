@@ -84,7 +84,7 @@ class ServerSetupActivity : BaseActivity() {
             @Suppress("DEPRECATION")
             (pInfo?.versionCode?.toLong() ?: BuildConfig.VERSION_CODE.toLong())
         }
-        binding.tvVersion.text = getString(R.string.app_version_short, vName, vCode)
+        binding.tvVersion.text = getString(R.string.app_version_short, vName, vCode.toString())
         binding.btnLanguage.text = "🌐 " + L10n.displayName()
         binding.btnLanguage.setOnClickListener { L10n.showPicker(this) }
 

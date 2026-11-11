@@ -820,7 +820,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
                 response.stats?.let { s ->
                     val mins = s.totalBillsec / 60
-                    binding.tvHistoryStats.text = getString(R.string.history_stats, s.totalCalls, s.missedCalls, mins)
+                    binding.tvHistoryStats.text = getString(R.string.history_stats, s.totalCalls.toString(), s.missedCalls.toString(), mins.toString())
                 }
             }.onFailure { err ->
                 // Signed out meanwhile (session rejected): the sign-in screen explains it.
@@ -1299,7 +1299,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
                 .create()
 
             val selectionAdapter = ContactSelectionAdapter { selected ->
-                dialogBinding.tvSelectedCount.text = getString(R.string.select_members_count, selected.size)
+                dialogBinding.tvSelectedCount.text = getString(R.string.select_members_count, selected.size.toString())
             }
 
             dialogBinding.rvGroupMembers.layoutManager = LinearLayoutManager(this@DialerActivity)
@@ -1485,7 +1485,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             binding.tvChatRoomTargetName.text = if (currentChatTargetName.isNotEmpty()) currentChatTargetName else getString(R.string.group_chat)
             val grp = currentChatGroupDetails
             binding.tvChatRoomTargetStatus.text = if (grp != null) {
-                getString(R.string.group_members_online_grp, grp.memberCount, grp.onlineCount)
+                getString(R.string.group_members_online_grp, grp.memberCount.toString(), grp.onlineCount.toString())
             } else {
                 getString(R.string.group_chat)
             }
@@ -1701,7 +1701,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             dialogBinding.tvGroupInfoAvatar.text = "👥"
             dialogBinding.tvGroupInfoAvatar.backgroundTintList = ColorStateList.valueOf(0xFF4F46E5.toInt())
             dialogBinding.tvGroupInfoTitle.text = group.title ?: getString(R.string.group_chat)
-            dialogBinding.tvGroupInfoSubtitle.text = getString(R.string.group_members_online_info, group.memberCount, group.onlineCount)
+            dialogBinding.tvGroupInfoSubtitle.text = getString(R.string.group_members_online_info, group.memberCount.toString(), group.onlineCount.toString())
             if (!group.description.isNullOrEmpty()) {
                 dialogBinding.tvGroupInfoDesc.visibility = View.VISIBLE
                 dialogBinding.tvGroupInfoDesc.text = group.description
@@ -1912,7 +1912,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             btnSubmit.text = getString(R.string.btn_add_members)
 
             val selectionAdapter = ContactSelectionAdapter { selected ->
-                tvSelected.text = getString(R.string.select_members_count, selected.size)
+                tvSelected.text = getString(R.string.select_members_count, selected.size.toString())
             }
             rvMembers.layoutManager = LinearLayoutManager(this@DialerActivity)
             rvMembers.adapter = selectionAdapter
@@ -1961,8 +1961,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
     private fun setupFeaturesTab() {
         // 1. Version and system info
-        binding.tvAppVersion.text = getString(R.string.app_version_info, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
-        binding.tvDeviceInfo.text = getString(R.string.device_info, Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT)
+        binding.tvAppVersion.text = getString(R.string.app_version_info, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toString())
+        binding.tvDeviceInfo.text = getString(R.string.device_info, Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT.toString())
         val serverUrl = prefs.serverUrl
         binding.tvServerVersion.text = getString(R.string.pbx_info_url, serverUrl)
 
@@ -1982,7 +1982,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         }
 
         // 2. Duration dropdown
-        val timeoutAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, timeoutOptions.map { getString(R.string.seconds_short, it) })
+        val timeoutAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, timeoutOptions.map { getString(R.string.seconds_short, it.toString()) })
         binding.actvNoAnswerTimeout.setAdapter(timeoutAdapter)
         binding.actvNoAnswerTimeout.setOnItemClickListener { _, _, position, _ ->
             currentNoAnswerTimeout = timeoutOptions.getOrElse(position) { 20 }
@@ -2024,7 +2024,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             binding.etForwardAlways.setText("")
             binding.etForwardBusy.setText("")
             binding.etForwardNoAnswer.setText("")
-            binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, 20), false)
+            binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, "20"), false)
             currentNoAnswerTimeout = 20
 
             updateFeaturesOnServer(
@@ -2162,7 +2162,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
                 binding.etForwardAlways.setText(currentForwardAlways)
                 binding.etForwardBusy.setText(currentForwardBusy)
                 binding.etForwardNoAnswer.setText(currentForwardNoAnswer)
-                binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, currentNoAnswerTimeout), false)
+                binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, currentNoAnswerTimeout.toString()), false)
 
                 updateHeaderBadges()
             }
@@ -2201,7 +2201,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
                 binding.etForwardAlways.setText(currentForwardAlways)
                 binding.etForwardBusy.setText(currentForwardBusy)
                 binding.etForwardNoAnswer.setText(currentForwardNoAnswer)
-                binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, currentNoAnswerTimeout), false)
+                binding.actvNoAnswerTimeout.setText(getString(R.string.seconds_short, currentNoAnswerTimeout.toString()), false)
 
                 updateHeaderBadges()
 

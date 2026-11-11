@@ -1,27 +1,19 @@
 package com.mhrgl.aipbx
 
-import com.mhrgl.aipbx.ui.isOwnBrowserSignIn
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
+/** Keep unbound browser callbacks behind the same confirmation as invitation links. */
 class AuthDeepLinkTest {
-    private val now = 1_800_000_000_000L
-    private val minute = 60_000L
-
-    @Test fun signInThisAppStartedIsTrusted() {
-        assertTrue(isOwnBrowserSignIn(now - 2 * minute, now))
-    }
-
-    @Test fun linkWithoutAStartedSignInIsNotTrusted() {
-        assertFalse(isOwnBrowserSignIn(0L, now))
-    }
-
-    @Test fun anOldStartSaysNothingAboutThisLink() {
-        assertFalse(isOwnBrowserSignIn(now - 11 * minute, now))
-    }
-
-    @Test fun aStartInTheFutureIsNotTrusted() {
-        assertFalse(isOwnBrowserSignIn(now + minute, now))
+    @Test fun browserCallbacksRequireConfirmationWithoutTimestampTrust() {
+        val root = File(System.getProperty("user.dir")!!).let { if (it.name == "app") it.parentFile else it }
+        val source = File(root, "app/src/main/java/com/mhrgl/aipbx/ui/LoginActivity.kt").readText()
+        val callback = source.substringAfter("\"auth\" -> {").substringBefore("private fun confirmServerThen")
+        assertTrue(callback.contains("confirmServerThen(serverUrl)"))
+        assertFalse(callback.contains("browserSignInStartedAt"))
+        assertFalse(callback.contains("performQrLogin(serverUrl, code)"))
+        assertFalse(callback.contains("getQueryParameter(\"error\")"))
     }
 }

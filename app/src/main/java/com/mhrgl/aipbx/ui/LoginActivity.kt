@@ -29,13 +29,6 @@ import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONObject
 
-/** A browser sign-in takes minutes at most; an older start says nothing about this link. */
-private const val BROWSER_SIGN_IN_WINDOW_MS = 10 * 60 * 1000L
-
-/** Did this app open the browser sign-in that an aipbx://auth link is coming back from? */
-internal fun isOwnBrowserSignIn(startedAt: Long, now: Long): Boolean =
-    startedAt > 0L && now - startedAt in 0..BROWSER_SIGN_IN_WINDOW_MS
-
 class LoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLoginBinding
@@ -78,7 +71,7 @@ class LoginActivity : BaseActivity() {
             @Suppress("DEPRECATION")
             (pInfo?.versionCode?.toLong() ?: BuildConfig.VERSION_CODE.toLong())
         }
-        binding.tvVersion.text = getString(R.string.app_version_short, vName, vCode)
+        binding.tvVersion.text = getString(R.string.app_version_short, vName, vCode.toString())
 
         binding.btnLanguage.text = "🌐 " + L10n.displayName()
         binding.btnLanguage.setOnClickListener { L10n.showPicker(this) }
@@ -117,7 +110,6 @@ class LoginActivity : BaseActivity() {
             try {
                 val googleAuthUrl = "$serverUrl/auth/google?mobile=1"
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(googleAuthUrl))
-                prefs.browserSignInStartedAt = System.currentTimeMillis()
                 startActivity(intent)
             } catch (e: Exception) {
                 showError(getString(R.string.err_browser, e.message))
@@ -224,22 +216,18 @@ class LoginActivity : BaseActivity() {
             // a code of their own account, must not silently replace the session on
             // this phone (calls and chat would then go to that account), and its
             // "error" text must not appear as if this app had written it.
+            // This callback has no bound nonce, so confirmation is always required.
             "auth" -> {
-                val ownSignIn = isOwnBrowserSignIn(prefs.browserSignInStartedAt, System.currentTimeMillis())
-                prefs.browserSignInStartedAt = 0L
                 if (uri.getQueryParameter("success") == "1") {
                     val code = uri.getQueryParameter("code")
                     val serverUrl = prefs.serverUrl.trim().trimEnd('/')
                     if (code.isNullOrEmpty() || serverUrl.isEmpty()) {
                         showError(getString(R.string.err_google_incomplete))
-                    } else if (ownSignIn) {
-                        performQrLogin(serverUrl, code)
                     } else {
                         confirmServerThen(serverUrl) { replace -> performQrLogin(serverUrl, code, replace) }
                     }
                 } else {
-                    val serverError = if (ownSignIn) uri.getQueryParameter("error") else null
-                    showError(serverError ?: getString(R.string.err_google_login))
+                    showError(getString(R.string.err_google_login))
                 }
             }
         }
