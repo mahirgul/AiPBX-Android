@@ -39,7 +39,7 @@ object AppLogManager {
         val now = dateFormat.format(Date())
 
         sb.append("====================================================\n")
-        sb.append("            AI PBX SYSTEM & DIAGNOSTIC REPORT         \n")
+        sb.append("            OwnPBX SYSTEM & DIAGNOSTIC REPORT         \n")
         sb.append("====================================================\n")
         sb.append("Date & Time      : $now\n")
         sb.append("App Version      : v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})\n")
@@ -106,7 +106,7 @@ object AppLogManager {
         val logContent = collectLogs(context)
         val logsDir = File(context.cacheDir, "logs").apply { mkdirs() }
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val file = File(logsDir, "aipbx_logs_$timeStamp.txt")
+        val file = File(logsDir, "ownpbx_logs_$timeStamp.txt")
         FileOutputStream(file).use { out ->
             out.write(logContent.toByteArray(Charsets.UTF_8))
         }
@@ -120,7 +120,7 @@ object AppLogManager {
     suspend fun exportLogsToDownloads(context: Context): Uri? = withContext(Dispatchers.IO) {
         val logContent = collectLogs(context)
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val fileName = "aipbx_logs_$timeStamp.txt"
+        val fileName = "ownpbx_logs_$timeStamp.txt"
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -166,7 +166,7 @@ object AppLogManager {
 
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "AI PBX System Logs (${logFile.name})")
+                putExtra(Intent.EXTRA_SUBJECT, "OwnPBX System Logs (${logFile.name})")
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
