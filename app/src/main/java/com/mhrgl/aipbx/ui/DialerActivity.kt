@@ -1,6 +1,7 @@
 package com.mhrgl.aipbx.ui
 
 import com.mhrgl.aipbx.util.BatteryPrompt
+import com.mhrgl.aipbx.util.EmojiPicker
 import com.mhrgl.aipbx.util.FullScreenCallPrompt
 import com.google.android.material.snackbar.Snackbar
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -91,6 +92,12 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     }
 
     private val pickChatPhotoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) handleChatPickedUri(uri, "image")
+    }
+
+    // A GIF picked here goes through the same prepare/upload flow as a photo;
+    // ChatUploadPrep sends GIFs as-is so the animation survives.
+    private val pickChatGifLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) handleChatPickedUri(uri, "image")
     }
 
@@ -1080,6 +1087,14 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
         binding.btnChatCamera.setOnClickListener { anchor ->
             showChatPhotoSourceMenu(anchor)
+        }
+
+        binding.btnChatEmoji.setOnClickListener {
+            EmojiPicker.show(this@DialerActivity, binding.etChatMessage)
+        }
+
+        binding.btnChatGif.setOnClickListener {
+            pickChatGifLauncher.launch("image/gif")
         }
 
         binding.btnChatCancelUpload.setOnClickListener {

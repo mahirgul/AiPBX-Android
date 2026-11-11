@@ -127,7 +127,9 @@
     <string name="cf_busy_noanswer">CF (BUSY/NO ANSWER)</string>
     <string name="cf_noanswer">CF (NO ANSWER)</string>
     <string name="chat_document">Document</string>
+    <string name="chat_emoji">Emoji</string>
     <string name="chat_extension_title">Extension #%1$s</string>
+    <string name="chat_gif">GIF</string>
     <string name="chat_name_ext_title">%1$s (#%2$s)</string>
     <string name="chat_no_groups">No group chats yet</string>
     <string name="chat_no_groups_desc">Create a new group to message your team instantly.</string>

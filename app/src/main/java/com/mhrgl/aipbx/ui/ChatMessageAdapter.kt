@@ -201,9 +201,15 @@ class ChatMessageAdapter(
             if (m.msgType == "image" && !m.attachmentUrl.isNullOrEmpty()) {
                 ivImage.visibility = View.VISIBLE
                 val fullImageUrl = resolveMediaUrl(m.attachmentUrl)
-                // The list uses the thumbnail the server generated (≈20 KB);
-                // otherwise it falls back to the original image.
-                SimpleImageLoader.load(resolveMediaUrl(thumbPathFor(m.attachmentUrl)), ivImage, tokenProvider(), fullImageUrl)
+                if (SimpleImageLoader.isGifUrl(m.attachmentUrl)) {
+                    // The server thumbnail is a static first frame — load the
+                    // full GIF so it animates (the thumbnail is the fallback).
+                    SimpleImageLoader.load(fullImageUrl, ivImage, tokenProvider(), resolveMediaUrl(thumbPathFor(m.attachmentUrl)))
+                } else {
+                    // The list uses the thumbnail the server generated (≈20 KB);
+                    // otherwise it falls back to the original image.
+                    SimpleImageLoader.load(resolveMediaUrl(thumbPathFor(m.attachmentUrl)), ivImage, tokenProvider(), fullImageUrl)
+                }
 
                 // An in-app full-screen viewer instead of an external browser.
                 ivImage.setOnClickListener {

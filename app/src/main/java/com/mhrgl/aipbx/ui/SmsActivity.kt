@@ -39,6 +39,7 @@ import com.mhrgl.aipbx.model.SmsGif
 import com.mhrgl.aipbx.model.SmsMessage
 import com.mhrgl.aipbx.model.SmsNumber
 import com.mhrgl.aipbx.model.SmsThread
+import com.mhrgl.aipbx.util.EmojiPicker
 import java.time.OffsetDateTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -127,7 +128,7 @@ class SmsActivity : BaseActivity() {
         binding.rvMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         binding.rvMessages.adapter = messageAdapter
         binding.btnAttach.setOnClickListener { pickImageLauncher.launch("image/*") }
-        binding.btnEmoji.setOnClickListener { showEmojiPicker() }
+        binding.btnEmoji.setOnClickListener { EmojiPicker.show(this, binding.etMessage) }
         binding.btnGif.setOnClickListener {
             if (gifSearch) showGifPicker() else pickImageLauncher.launch("image/gif")
         }
@@ -411,53 +412,6 @@ class SmsActivity : BaseActivity() {
                 }
             }
             .show()
-    }
-
-    // --- Emoji ---
-
-    private val emojis =
-        ("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😜 🤪 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 😣 😫 " +
-            "😩 🥺 😢 😭 😤 😠 😡 🤯 😳 😱 😨 😰 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😴 🤤 😷 🤒 🤕 🤢 🤮 🥴 " +
-            "😵 🤠 👍 👎 👌 ✌️ 🤞 🤟 🤘 👏 🙌 👐 🙏 💪 👋 👀 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💯 🔥 ✨ ⭐ 🎉 " +
-            "🎊 🎁 🎂 ☕ 🍕 🍔 🍺 🍷 ⚽ 🏀 🚗 ✈️ 🏠 📞 📱 💻 📷 🎵 ✅ ❌ ⚠️ ❓ ❗ 💤 🌞 🌙 🌧️ ❄️ 🐶 🐱")
-            .split(" ")
-
-    private fun showEmojiPicker() {
-        val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt() }
-        val grid = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@SmsActivity, 7)
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-        }
-        val dialog = AlertDialog.Builder(this).setView(grid).create()
-        grid.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-                val tv = TextView(parent.context).apply {
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
-                    gravity = Gravity.CENTER
-                    setPadding(0, dp(6), 0, dp(6))
-                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                }
-                return object : RecyclerView.ViewHolder(tv) {}
-            }
-            override fun getItemCount() = emojis.size
-            override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-                val tv = holder.itemView as TextView
-                tv.text = emojis[position]
-                tv.setOnClickListener {
-                    insertIntoMessage(emojis[position])
-                    dialog.dismiss()
-                }
-            }
-        }
-        dialog.show()
-    }
-
-    private fun insertIntoMessage(str: String) {
-        val et = binding.etMessage
-        val start = et.selectionStart.coerceAtLeast(0)
-        val end = et.selectionEnd.coerceAtLeast(0)
-        et.text.replace(minOf(start, end), maxOf(start, end), str)
-        et.requestFocus()
     }
 
     // --- GIF (search through the server's GIPHY key) ---
