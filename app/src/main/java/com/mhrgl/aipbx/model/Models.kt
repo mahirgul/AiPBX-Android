@@ -159,6 +159,79 @@ data class FaxActionResponse(
     @SerializedName("error") val error: String? = null,
 )
 
+/** One of the user's SMS numbers (api/mobile/sms.php config). */
+data class SmsNumber(
+    @SerializedName("id") val id: Int,
+    @SerializedName("number") val number: String? = null,
+    @SerializedName("label") val label: String? = null,
+    @SerializedName("provider") val provider: String? = null,
+)
+
+data class SmsConfigResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("numbers") val numbers: List<SmsNumber>? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** One SMS conversation: one of our numbers with one peer (api/mobile/sms.php threads). */
+data class SmsThread(
+    @SerializedName("number_id") val numberId: Int,
+    @SerializedName("number") val number: String? = null,
+    @SerializedName("peer") val peer: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("body") val body: String? = null,
+    @SerializedName("direction") val direction: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("unread") val unread: Int = 0,
+)
+
+data class SmsThreadsResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("threads") val threads: List<SmsThread>? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** One MMS picture or file on a message (api/mobile/sms.php thread). */
+data class SmsMedia(
+    @SerializedName("id") val id: Int,
+    @SerializedName("content_type") val contentType: String? = null,
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("url") val url: String? = null,
+)
+
+/** One SMS/MMS message in a conversation (api/mobile/sms.php thread). */
+data class SmsMessage(
+    @SerializedName("id") val id: Int,
+    @SerializedName("peer") val peer: String? = null,
+    @SerializedName("direction") val direction: String? = null,
+    @SerializedName("body") val body: String? = null,
+    @SerializedName("status") val status: String? = null,
+    @SerializedName("error") val error: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("is_read") val isRead: Boolean = false,
+    @SerializedName("media") val media: List<SmsMedia>? = null,
+)
+
+data class SmsThreadResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("messages") val messages: List<SmsMessage>? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** Result of sending an SMS/MMS: the stored message id. */
+data class SmsSendResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message_id") val messageId: Int? = null,
+    @SerializedName("error") val error: String? = null,
+)
+
+/** Result of the poll action: the newest message id of the user's numbers. */
+data class SmsPollResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("last") val last: Int = 0,
+    @SerializedName("error") val error: String? = null,
+)
+
 data class CallHistoryResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("extension") val extension: String?,

@@ -378,6 +378,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
         binding.btnVoicemail.setOnClickListener { VoicemailActivity.start(this) }
         binding.btnFax.setOnClickListener { FaxActivity.start(this) }
+        binding.btnSms.setOnClickListener { SmsActivity.start(this) }
 
         binding.btnLogout.setOnClickListener {
             AlertDialog.Builder(this)

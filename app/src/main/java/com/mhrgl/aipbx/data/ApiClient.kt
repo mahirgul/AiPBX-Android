@@ -507,6 +507,209 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             }
         }
 
+    // --- SMS API METHODS (api/mobile/sms.php) ---
+
+    /** The user's SMS numbers (sendable DIDs). */
+    suspend fun getSmsConfig(baseUrl: String, token: String): Result<SmsConfigResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/sms.php?action=config")
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsConfigResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.sms_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** SMS conversations (one of our numbers with one peer), newest first. */
+    suspend fun getSmsThreads(baseUrl: String, token: String): Result<SmsThreadsResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/sms.php?action=threads")
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsThreadsResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.sms_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** The messages of one conversation, oldest first (opening it marks them read). */
+    suspend fun getSmsThread(
+        baseUrl: String,
+        token: String,
+        numberId: Int,
+        peer: String,
+    ): Result<SmsThreadResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val enc = { v: String -> java.net.URLEncoder.encode(v, "UTF-8") }
+                val request =
+                    Request.Builder()
+                        .url(
+                            "$cleanUrl/api/mobile/sms.php?action=thread&number_id=$numberId&peer=${enc(peer)}"
+                        )
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsThreadResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.sms_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** The newest message id of the user's numbers, for polling. */
+    suspend fun pollSms(baseUrl: String, token: String): Result<SmsPollResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/sms.php?action=poll")
+                        .addHeader("Authorization", "Bearer $token")
+                        .get()
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsPollResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(result?.error ?: L10n.str(R.string.sms_load_failed))
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Sends an SMS/MMS. [imageFiles] are attached as media[] (at most 3,
+     * 5 MB each — the plugin's own limits); text-only sends no parts.
+     */
+    suspend fun sendSms(
+        baseUrl: String,
+        token: String,
+        numberId: Int,
+        peer: String,
+        text: String,
+        imageFiles: List<File> = emptyList(),
+    ): Result<SmsSendResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val builder =
+                    MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("action", "send")
+                        .addFormDataPart("number_id", numberId.toString())
+                        .addFormDataPart("peer", peer.trim())
+                        .addFormDataPart("text", text)
+                for (file in imageFiles) {
+                    builder.addFormDataPart(
+                        "media[]",
+                        file.name,
+                        file.asRequestBody("image/jpeg".toMediaType()),
+                    )
+                }
+                val request =
+                    Request.Builder()
+                        .url("$cleanUrl/api/mobile/sms.php?action=send")
+                        .addHeader("Authorization", "Bearer $token")
+                        .post(builder.build())
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsSendResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(result)
+                    else
+                        Result.failure(
+                            Exception(
+                                result?.error ?: L10n.str(R.string.sms_send_failed, response.code)
+                            )
+                        )
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** Names a peer for everyone on that number (empty name removes it). */
+    suspend fun saveSmsContact(
+        baseUrl: String,
+        token: String,
+        numberId: Int,
+        peer: String,
+        name: String,
+    ): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body =
+                    JSONObject()
+                        .apply {
+                            put("action", "contact")
+                            put("number_id", numberId)
+                            put("peer", peer)
+                            put("name", name)
+                        }
+                        .toString()
+                val request =
+                    Request.Builder()
+                        .url("${baseUrl.trim().trimEnd('/')}/api/mobile/sms.php")
+                        .addHeader("Authorization", "Bearer $token")
+                        .post(body.toRequestBody(jsonMediaType))
+                        .build()
+                client.newCall(request).execute().use { response ->
+                    val result =
+                        gson.fromJson(response.body?.string() ?: "", SmsSendResponse::class.java)
+                    if (response.isSuccessful && result != null && result.success)
+                        Result.success(Unit)
+                    else Result.failure(Exception(result?.error ?: "HTTP ${response.code}"))
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     suspend fun getCallHistory(
         baseUrl: String,
         token: String,
