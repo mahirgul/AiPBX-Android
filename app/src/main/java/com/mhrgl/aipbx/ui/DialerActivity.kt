@@ -276,6 +276,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         if (currentTab == Tab.HISTORY) {
             loadCallHistory(currentFilter)
         } else if (currentTab == Tab.CHAT) {
+            // Back from the SMS screen: the Chat tab is showing chat again.
+            setMessageTab(true)
             if (isChatRoomOpen()) {
                 ChatKeys.activeConversationId = currentChatConvId
                 val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
@@ -378,7 +380,6 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
         binding.btnVoicemail.setOnClickListener { VoicemailActivity.start(this) }
         binding.btnFax.setOnClickListener { FaxActivity.start(this) }
-        binding.btnSms.setOnClickListener { SmsActivity.start(this) }
 
         binding.btnLogout.setOnClickListener {
             AlertDialog.Builder(this)
@@ -1137,9 +1138,34 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             setChatFilter(ChatFilter.GROUP)
         }
 
+        // Messages toggle: Chat shows this list, SMS opens the SMS
+        // conversations screen (back returns here, toggle back on Chat).
+        binding.btnMsgTabChat.setOnClickListener {
+            setMessageTab(true)
+        }
+
+        binding.btnMsgTabSms.setOnClickListener {
+            setMessageTab(false)
+            SmsActivity.start(this)
+        }
+
         binding.etChatSearch.doAfterTextChanged { text ->
             filterConversations(text?.toString() ?: "")
         }
+    }
+
+    /** Highlights the active half of the Chat / SMS toggle, same style as the chat filters. */
+    private fun setMessageTab(chatActive: Boolean) {
+        val colorActiveBg = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.primary))
+        val colorInactiveBg = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.card_bg))
+        val colorActiveText = ContextCompat.getColor(this, android.R.color.white)
+        val colorInactiveText = ContextCompat.getColor(this, R.color.text_secondary)
+
+        binding.btnMsgTabChat.backgroundTintList = if (chatActive) colorActiveBg else colorInactiveBg
+        binding.btnMsgTabChat.setTextColor(if (chatActive) colorActiveText else colorInactiveText)
+
+        binding.btnMsgTabSms.backgroundTintList = if (chatActive) colorInactiveBg else colorActiveBg
+        binding.btnMsgTabSms.setTextColor(if (chatActive) colorInactiveText else colorActiveText)
     }
 
     private fun setChatFilter(filter: ChatFilter) {

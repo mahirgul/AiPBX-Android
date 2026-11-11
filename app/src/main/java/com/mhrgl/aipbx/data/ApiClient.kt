@@ -117,6 +117,19 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             .build()
     }
 
+    // Sends (SMS/MMS) go through the provider (VoIP.ms) on the server side, which
+    // can take well past the 15 s read/write timeouts — especially MMS media
+    // uploads. The send completes server-side but the app sees a timeout, so the
+    // user is told it failed when the message actually went out. Sends get their
+    // own client with 60 s timeouts (same 401-refresh interceptor); every other
+    // call keeps the global 15 s.
+    private val sendClient: OkHttpClient by lazy {
+        client.newBuilder()
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
+
     suspend fun ping(baseUrl: String): Result<ServerInfo> = withContext(Dispatchers.IO) {
         try {
             val cleanUrl = baseUrl.trim().trimEnd('/')
@@ -656,7 +669,7 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                         .addHeader("Authorization", "Bearer $token")
                         .post(builder.build())
                         .build()
-                client.newCall(request).execute().use { response ->
+                sendClient.newCall(request).execute().use { response ->
                     val result =
                         gson.fromJson(response.body?.string() ?: "", SmsSendResponse::class.java)
                     if (response.isSuccessful && result != null && result.success)

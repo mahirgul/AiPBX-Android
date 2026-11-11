@@ -456,6 +456,7 @@
     <string name="fax_send_failed">Fax could not be sent (HTTP %1$s)</string>
     <string name="fax_config_failed">Fax settings could not be loaded</string>
     <string name="sms_title">Messages</string>
+    <string name="sms_tab">SMS</string>
     <string name="sms_new">New message</string>
     <string name="sms_empty">No messages yet</string>
     <string name="sms_load_failed">Messages could not be loaded</string>

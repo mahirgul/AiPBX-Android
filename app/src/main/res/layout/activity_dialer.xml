@@ -139,17 +139,6 @@
             app:tint="@color/text_secondary" />
 
         <ImageButton
-            android:id="@+id/btnSms"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/sms_title"
-            android:padding="6dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_chat"
-            app:tint="@color/text_secondary" />
-
-        <ImageButton
             android:id="@+id/btnLogout"
             android:layout_width="36dp"
             android:layout_height="36dp"
@@ -598,6 +587,46 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical"
                 android:visibility="visible">
+
+                <!-- Messages toggle (Chat / SMS): one entry point for both kinds of
+                     messages, so there is no separate SMS icon in the header. -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/card_bg"
+                    android:elevation="1dp"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="4dp">
+
+                    <TextView
+                        android:id="@+id/btnMsgTabChat"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/chip_tab_btn_bg"
+                        android:backgroundTint="@color/primary"
+                        android:gravity="center"
+                        android:text="@string/ui_chat"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnMsgTabSms"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/chip_tab_btn_bg"
+                        android:gravity="center"
+                        android:text="@string/sms_tab"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
 
                 <!-- Top Chat Header Bar -->
                 <LinearLayout

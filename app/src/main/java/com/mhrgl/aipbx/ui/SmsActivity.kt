@@ -250,8 +250,8 @@ class SmsActivity : BaseActivity() {
         sending = true
         binding.btnSendSms.isEnabled = false
         lifecycleScope.launch {
-            apiClient
-                .sendSms(
+            val result =
+                apiClient.sendSms(
                     url,
                     token,
                     openNumberId,
@@ -259,19 +259,58 @@ class SmsActivity : BaseActivity() {
                     text,
                     if (image != null) listOf(image.file) else emptyList(),
                 )
-                .onSuccess {
-                    binding.etMessage.text?.clear()
-                    imagePrepared?.cleanup()
-                    imagePrepared = null
-                    binding.tvAttachName.visibility = View.GONE
-                    loadThread()
+            if (result.isSuccess) {
+                clearComposer()
+                loadThread()
+            } else {
+                val e = result.exceptionOrNull()
+                // The send call can time out while the server still completes the
+                // send (slow provider call, MMS upload). Re-fetch the thread: if
+                // our message is now there, it went through — do not report it
+                // as failed.
+                if (e != null && isTimeout(e) && confirmSentAfterTimeout(text)) {
+                    clearComposer()
+                    Toast.makeText(this@SmsActivity, getString(R.string.sms_sent_ok), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@SmsActivity, e?.message, Toast.LENGTH_LONG).show()
                 }
-                .onFailure {
-                    Toast.makeText(this@SmsActivity, it.message, Toast.LENGTH_LONG).show()
-                }
+            }
             sending = false
             binding.btnSendSms.isEnabled = true
         }
+    }
+
+    private fun clearComposer() {
+        binding.etMessage.text?.clear()
+        imagePrepared?.cleanup()
+        imagePrepared = null
+        binding.tvAttachName.visibility = View.GONE
+    }
+
+    /** True when the failure is a timeout — the send may have completed anyway. */
+    private fun isTimeout(e: Throwable): Boolean =
+        e is java.net.SocketTimeoutException ||
+            e.message?.contains("timed out", ignoreCase = true) == true ||
+            e.message?.contains("timeout", ignoreCase = true) == true
+
+    /**
+     * Re-fetch the open thread and check whether the just-sent message is now
+     * there. Matches an outgoing message with the same text (or, for a
+     * picture-only MMS, an outgoing message carrying media) that the server
+     * did not mark failed.
+     */
+    private suspend fun confirmSentAfterTimeout(text: String): Boolean {
+        val url = prefs.serverUrl
+        val token = prefs.token ?: return false
+        val res = apiClient.getSmsThread(url, token, openNumberId, openPeer).getOrNull()
+            ?: return false
+        val found =
+            res.messages.orEmpty().any { msg ->
+                msg.direction == "out" && msg.status != "failed" &&
+                    if (text.isNotEmpty()) msg.body == text else !msg.media.isNullOrEmpty()
+            }
+        if (found) loadThread()
+        return found
     }
 
     private fun submitNew() {
@@ -297,9 +336,27 @@ class SmsActivity : BaseActivity() {
         binding.btnSendNew.isEnabled = false
         binding.btnSendNew.setText(R.string.sms_sending)
         lifecycleScope.launch {
-            apiClient
-                .sendSms(url, token, number.id, peer, text)
-                .onSuccess {
+            val result = apiClient.sendSms(url, token, number.id, peer, text)
+            if (result.isSuccess) {
+                Toast.makeText(
+                        this@SmsActivity,
+                        getString(R.string.sms_sent_ok),
+                        Toast.LENGTH_LONG,
+                    )
+                    .show()
+                showThread(
+                    SmsThread(
+                        numberId = number.id,
+                        number = number.number,
+                        peer = peer,
+                    )
+                )
+            } else {
+                val e = result.exceptionOrNull()
+                // Same timeout ambiguity as the thread composer: the send may
+                // have completed server-side. Check the conversation list for
+                // a matching outgoing message before reporting a failure.
+                if (e != null && isTimeout(e) && confirmNewSentAfterTimeout(peer, number.id, text)) {
                     Toast.makeText(
                             this@SmsActivity,
                             getString(R.string.sms_sent_ok),
@@ -313,13 +370,28 @@ class SmsActivity : BaseActivity() {
                             peer = peer,
                         )
                     )
+                } else {
+                    Toast.makeText(this@SmsActivity, e?.message, Toast.LENGTH_LONG).show()
                 }
-                .onFailure {
-                    Toast.makeText(this@SmsActivity, it.message, Toast.LENGTH_LONG).show()
-                }
+            }
             sending = false
             binding.btnSendNew.isEnabled = true
             binding.btnSendNew.setText(R.string.sms_send)
+        }
+    }
+
+    /**
+     * Re-fetch the conversation list and check whether a thread with this peer
+     * now ends in our outgoing message. The list preview is the newest message,
+     * so a match means the timed-out send went through.
+     */
+    private suspend fun confirmNewSentAfterTimeout(peer: String, numberId: Int, text: String): Boolean {
+        val url = prefs.serverUrl
+        val token = prefs.token ?: return false
+        val res = apiClient.getSmsThreads(url, token).getOrNull() ?: return false
+        return res.threads.orEmpty().any { thread ->
+            thread.peer == peer && thread.numberId == numberId &&
+                thread.direction == "out" && thread.body == text
         }
     }
 
