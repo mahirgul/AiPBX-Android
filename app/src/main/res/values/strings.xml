@@ -4,7 +4,7 @@
     <string name="action_answer">Answer</string>
     <string name="action_decline">Decline</string>
     <string name="action_hangup">Hang up</string>
-    <string name="app_name" translatable="false">AiPBX</string>
+    <string name="app_name" translatable="false">OwnPBX</string>
     <string name="battery_optimization_desc">Turn off battery saving restrictions so incoming calls ring without delay.</string>
     <string name="battery_optimization_title">Battery Saver</string>
     <string name="btn_answer">Answer</string>
@@ -54,13 +54,13 @@
     <string name="msg_logging_in">Signing in...</string>
     <string name="msg_testing_connection">Connecting to the server...</string>
     <string name="notif_call_active_desc">Active call: %s</string>
-    <string name="notif_call_active_title">AiPBX - In Call</string>
+    <string name="notif_call_active_title">OwnPBX - In Call</string>
     <string name="notif_call_calling_desc">Calling %s...</string>
-    <string name="notif_call_calling_title">AiPBX - Calling...</string>
+    <string name="notif_call_calling_title">OwnPBX - Calling...</string>
     <string name="notif_call_incoming_desc">%s is calling...</string>
-    <string name="notif_call_incoming_title">AiPBX - Incoming Call</string>
+    <string name="notif_call_incoming_title">OwnPBX - Incoming Call</string>
     <string name="notif_call_on_hold_desc">Call on hold: %s</string>
-    <string name="notif_call_on_hold_title">AiPBX - On Hold</string>
+    <string name="notif_call_on_hold_title">OwnPBX - On Hold</string>
     <string name="notif_channel_calls">Incoming Calls</string>
     <string name="notif_channel_chat">Chat and Messages</string>
     <string name="notif_channel_service">PBX Background Connection</string>
@@ -105,7 +105,7 @@
     <string name="api_token_failed">Token refresh failed (HTTP %1$s)</string>
     <string name="api_upload_failed">Could not upload the file (HTTP %1$s)</string>
     <string name="app_version_info">App: v%1$s (Build %2$s)</string>
-    <string name="app_version_short">AiPBX v%1$s (Build %2$s)</string>
+    <string name="app_version_short">OwnPBX v%1$s (Build %2$s)</string>
     <string name="battery_opt_msg">To avoid missing calls while the screen is off, make sure the app is exempt from battery saving (Unrestricted / Not optimized).</string>
     <string name="battery_opt_title">Battery Optimization Settings</string>
     <string name="bg_restricted_msg">Your device may have put the app to sleep in the background while the screen is off. To avoid missing calls, please turn off battery and background restrictions.</string>
@@ -179,7 +179,7 @@
     <string name="err_not_connected">Not connected to the PBX. Please wait...</string>
     <string name="err_otp_6_digits">Enter the 6-digit code.</string>
     <string name="err_qr_decode">Could not read the QR code: %1$s</string>
-    <string name="err_qr_invalid">Invalid or incompatible AiPBX QR code!</string>
+    <string name="err_qr_invalid">Invalid or incompatible OwnPBX QR code!</string>
     <string name="err_qr_login">QR code sign-in failed.</string>
     <string name="err_qr_missing_params">The QR code is missing parameters.</string>
     <string name="err_role_change">Could not change the role: %1$s</string>
@@ -219,7 +219,7 @@
     <string name="logs_nothing_to_copy">No logs to copy</string>
     <string name="logs_preparing_file">Preparing log file...</string>
     <string name="logs_save_failed">Could not save to Downloads</string>
-    <string name="logs_saved_ok">Saved to Downloads/AiPBX!</string>
+    <string name="logs_saved_ok">Saved to Downloads/OwnPBX!</string>
     <string name="logs_saving">Saving logs to Downloads...</string>
     <string name="logs_share_chooser">Download or Share Logs</string>
     <string name="logs_share_failed">Could not share the log file: %1$s</string>
@@ -240,7 +240,7 @@
     <string name="msg_left_group">You left the group.</string>
     <string name="msg_logs_collecting">Collecting and preparing logs...</string>
     <string name="msg_logs_collecting_short">Collecting logs...</string>
-    <string name="msg_logs_saved">Logs saved to Downloads/AiPBX!</string>
+    <string name="msg_logs_saved">Logs saved to Downloads/OwnPBX!</string>
     <string name="msg_removed_from_group">You were removed from the group.</string>
     <string name="msg_settings_updated_no_cf">PBX settings updated (forwarding off)</string>
     <string name="msg_uploading_file">Preparing and uploading the file...</string>
@@ -256,16 +256,16 @@
     <string name="push_new_message">You have a new message.</string>
     <string name="push_new_message_title">New Message</string>
     <string name="push_test_body">AI PBX test notification received.</string>
-    <string name="qr_prompt_login">Point the camera at the QR code on the AiPBX web page (My Phone)</string>
+    <string name="qr_prompt_login">Point the camera at the QR code on the OwnPBX web page (My Phone)</string>
     <string name="qr_prompt_setup">Align the MyPhone QR code from the web page inside the box</string>
     <string name="remove_member_confirm">Remove %1$s from the group?</string>
     <string name="remove_member_title">Remove Member</string>
-    <string name="samsung_guide_message">To avoid missing calls on Samsung devices while the screen is off:\n\n1. Go to \'Settings\' -&gt; \'Battery and device care\' -&gt; \'Battery\'.\n2. Open \'Background usage limits\'.\n3. Remove AiPBX from \'Sleeping apps\' or \'Deep sleeping apps\' if it is there.\n4. Add AiPBX to \'Never auto sleeping apps\'.</string>
+    <string name="samsung_guide_message">To avoid missing calls on Samsung devices while the screen is off:\n\n1. Go to \'Settings\' -&gt; \'Battery and device care\' -&gt; \'Battery\'.\n2. Open \'Background usage limits\'.\n3. Remove OwnPBX from \'Sleeping apps\' or \'Deep sleeping apps\' if it is there.\n4. Add OwnPBX to \'Never auto sleeping apps\'.</string>
     <string name="samsung_guide_title">Samsung Background Restriction</string>
     <string name="seconds_short">%1$s s</string>
     <string name="select_members_count">Select members (%1$s selected):</string>
     <string name="session_expired_text">Your password may have changed or the session expired. Please sign in again.</string>
-    <string name="session_expired_title">AiPBX session ended</string>
+    <string name="session_expired_title">OwnPBX session ended</string>
     <string name="status_online">Online</string>
     <string name="transfer_hint">e.g. 1002 or 9998</string>
     <string name="transferring_to">Transferring: %1$s</string>
@@ -386,7 +386,7 @@
     <string name="ui_type_message">Type a message...</string>
     <string name="ui_typing">typing...</string>
     <string name="full_screen_title">Full-screen incoming calls</string>
-    <string name="full_screen_msg">Android has switched off full-screen notifications for AiPBX, so on a locked phone an incoming call only shows a small notification. Allow \"Full-screen notifications\" for AiPBX on the next screen.</string>
+    <string name="full_screen_msg">Android has switched off full-screen notifications for OwnPBX, so on a locked phone an incoming call only shows a small notification. Allow \"Full-screen notifications\" for OwnPBX on the next screen.</string>
     <string name="full_screen_status_on">Full-screen calls: allowed</string>
     <string name="full_screen_status_off">Full-screen calls: off. Tap to allow</string>
     <string name="history_clear">Clear call history</string>

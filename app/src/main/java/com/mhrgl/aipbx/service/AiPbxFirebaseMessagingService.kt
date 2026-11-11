@@ -81,7 +81,7 @@ class AiPbxFirebaseMessagingService : FirebaseMessagingService() {
         val notif = NotificationCompat.Builder(this, PbxForegroundService.CHANNEL_ID_SERVICE)
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(R.drawable.ic_stat_aipbx)
+            .setSmallIcon(R.drawable.ic_stat_ownpbx)
             .setColor(0xFF0284C7.toInt())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

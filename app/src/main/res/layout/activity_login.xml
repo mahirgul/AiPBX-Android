@@ -21,7 +21,7 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/app_logo_white_circle" />
+            android:src="@drawable/app_logo_ownpbx" />
 
         <TextView
             android:id="@+id/tvCurrentServer"
@@ -69,7 +69,7 @@
             android:layout_width="84dp"
             android:layout_height="84dp"
             android:contentDescription="@string/app_name"
-            android:src="@drawable/app_logo_white_circle" />
+            android:src="@drawable/app_logo_ownpbx" />
 
         <TextView
             android:id="@+id/tvBrandTitle"

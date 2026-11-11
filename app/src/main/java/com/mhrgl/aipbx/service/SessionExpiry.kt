@@ -59,7 +59,7 @@ object SessionExpiry {
         val notification = NotificationCompat.Builder(appContext, PbxForegroundService.CHANNEL_ID_CHAT)
             .setContentTitle(L10n.str(R.string.session_expired_title))
             .setContentText(L10n.str(R.string.session_expired_text))
-            .setSmallIcon(R.drawable.ic_stat_aipbx)
+            .setSmallIcon(R.drawable.ic_stat_ownpbx)
             .setColor(0xFF0284C7.toInt())
             .setContentIntent(pi)
             .setAutoCancel(true)

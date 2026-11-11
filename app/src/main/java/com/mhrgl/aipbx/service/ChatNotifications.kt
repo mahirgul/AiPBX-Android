@@ -98,7 +98,7 @@ object ChatNotifications {
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(style)
-            .setSmallIcon(R.drawable.ic_stat_aipbx)
+            .setSmallIcon(R.drawable.ic_stat_ownpbx)
             .setColor(0xFF0284C7.toInt())
             .setContentIntent(openPending)
             .addAction(replyAction)

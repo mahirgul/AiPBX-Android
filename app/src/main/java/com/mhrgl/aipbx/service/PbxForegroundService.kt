@@ -686,7 +686,7 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
                 }
             }
             else -> {
-                // Short on purpose: "AiPBX · 1000 ✅" — the mark says whether calls can come in.
+                // Short on purpose: "OwnPBX · 1000 ✅" — the mark says whether calls can come in.
                 val mark = when (status) {
                     ConnectionStatus.CONNECTED -> "✅"
                     ConnectionStatus.CONNECTING -> "\uD83D\uDFE1" // yellow circle
@@ -711,11 +711,11 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID_SERVICE)
             .setContentTitle(title)
             .setContentText(content.ifEmpty { null })
-            .setSmallIcon(R.drawable.ic_stat_aipbx)
+            .setSmallIcon(R.drawable.ic_stat_ownpbx)
             .setContentIntent(pendingOpen)
             .setOngoing(true)
             .setCategory(if (isCallActive) NotificationCompat.CATEGORY_CALL else NotificationCompat.CATEGORY_SERVICE)
-            // Accent of the icon: AiPBX brand blue while connected, amber while connecting, red when cut off.
+            // Accent of the icon: OwnPBX brand blue while connected, amber while connecting, red when cut off.
             .setColor(when {
                 isCallActive || status == ConnectionStatus.CONNECTED -> 0xFF0284C7.toInt()
                 status == ConnectionStatus.CONNECTING -> 0xFFD97706.toInt()
@@ -810,7 +810,7 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         val builder = NotificationCompat.Builder(this, CHANNEL_ID_CALLS)
             .setContentTitle(getString(R.string.notif_incoming_call_title, effectiveName))
             .setContentText(if (effectiveNumber.isNotEmpty()) getString(R.string.notif_incoming_call_desc, effectiveNumber) else getString(R.string.call_from_pbx))
-            .setSmallIcon(R.drawable.ic_stat_aipbx)
+            .setSmallIcon(R.drawable.ic_stat_ownpbx)
             .setColor(0xFF0284C7.toInt())
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)

@@ -128,7 +128,7 @@ object AppLogManager {
                 val contentValues = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AiPBX")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/OwnPBX")
                 }
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
                 if (uri != null) {
@@ -140,7 +140,7 @@ object AppLogManager {
             } else {
                 @Suppress("DEPRECATION")
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val targetDir = File(downloadsDir, "AiPBX").apply { mkdirs() }
+                val targetDir = File(downloadsDir, "OwnPBX").apply { mkdirs() }
                 val targetFile = File(targetDir, fileName)
                 FileOutputStream(targetFile).use { fos ->
                     fos.write(logContent.toByteArray(Charsets.UTF_8))

@@ -34,7 +34,7 @@
             android:layout_width="84dp"
             android:layout_height="84dp"
             android:contentDescription="@string/ui_calls"
-            android:src="@drawable/app_logo_white_circle" />
+            android:src="@drawable/app_logo_ownpbx" />
 
         <TextView
             android:id="@+id/tvCallerName"

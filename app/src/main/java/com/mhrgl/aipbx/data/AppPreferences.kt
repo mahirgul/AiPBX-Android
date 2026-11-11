@@ -406,7 +406,7 @@ class AppPreferences(context: Context) {
 
     companion object {
         const val DEFAULT_SERVER_URL = ""
-        const val DEFAULT_BRAND_TITLE = "AiPBX"
+        const val DEFAULT_BRAND_TITLE = "OwnPBX"
         // Empty: the screens show R.string.default_brand_sub (localized).
         const val DEFAULT_BRAND_SUB = ""
 
