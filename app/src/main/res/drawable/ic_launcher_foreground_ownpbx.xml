@@ -3,6 +3,9 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <path
+        android:fillColor="#FFEF4444"
+        android:pathData="M11,54a43,43 0 1,0 86,0a43,43 0 1,0 -86,0z"/>
     <group
         android:pivotX="0"
         android:pivotY="0"
