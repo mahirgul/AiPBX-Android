@@ -86,6 +86,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     private var currentChatIsGroup: Boolean = false
     private var currentChatGroupDetails: ChatConversation? = null
     private var chatPendingUpload: ChatUploadResponse? = null
+    /** The message a new chat message replies to, if any (long-press → Reply). */
+    private var chatReplyTarget: ChatMessage? = null
 
     private val pickChatDocumentLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) handleChatPickedUri(uri, "file")
@@ -1023,6 +1025,47 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             .show()
     }
 
+    // Long press on a chat message: Reply for any message, Delete for your own.
+    private fun showChatMessageActions(msg: ChatMessage) {
+        val mine = msg.isMe || msg.senderExt == (prefs.extension ?: "")
+        val labels = mutableListOf(getString(R.string.chat_reply_action))
+        if (mine) labels.add(getString(R.string.ui_delete))
+        AlertDialog.Builder(this)
+            .setItems(labels.toTypedArray()) { _, which ->
+                when (labels[which]) {
+                    getString(R.string.chat_reply_action) -> startChatReply(msg)
+                    getString(R.string.ui_delete) -> confirmDeleteChatMessage(msg)
+                }
+            }
+            .show()
+    }
+
+    private fun startChatReply(message: ChatMessage) {
+        chatReplyTarget = message
+        val who = if (message.isMe || message.senderExt == (prefs.extension ?: "")) {
+            getString(R.string.chat_reply_you)
+        } else {
+            message.senderName.ifBlank { message.senderExt }
+        }
+        val snippet = message.message.orEmpty().ifBlank {
+            when (message.msgType) {
+                "image" -> getString(R.string.chat_preview_photo)
+                "audio" -> getString(R.string.chat_preview_audio)
+                "file" -> message.fileName?.let { getString(R.string.chat_preview_file, it) }
+                    ?: getString(R.string.chat_preview_document)
+                else -> ""
+            }
+        }
+        binding.tvChatReplyPreview.text = getString(R.string.chat_replying_to, who) + "\n" + snippet
+        binding.llChatReplyBar.visibility = View.VISIBLE
+        binding.etChatMessage.requestFocus()
+    }
+
+    private fun clearChatReply() {
+        chatReplyTarget = null
+        binding.llChatReplyBar.visibility = View.GONE
+    }
+
     private fun setupChatTab() {
         chatAdapter = ChatConversationAdapter { conv ->
             val isGroup = conv.type == "group"
@@ -1041,7 +1084,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         chatMessageAdapter = ChatMessageAdapter(
             myExt, baseUrl, false,
             tokenProvider = { prefs.token },
-            onOwnMessageLongPress = { msg -> confirmDeleteChatMessage(msg) }
+            onMessageLongPress = { msg -> showChatMessageActions(msg) }
         )
         val msgLm = LinearLayoutManager(this).apply {
             stackFromEnd = true
@@ -1100,6 +1143,10 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         binding.btnChatCancelUpload.setOnClickListener {
             chatPendingUpload = null
             binding.llChatUploadPreview.visibility = View.GONE
+        }
+
+        binding.btnChatReplyCancel.setOnClickListener {
+            clearChatReply()
         }
 
         binding.btnChatRoomCall.setOnClickListener {
@@ -1496,6 +1543,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         binding.etChatMessage.setText("")
         chatPendingUpload = null
         binding.llChatUploadPreview.visibility = View.GONE
+        clearChatReply()
         binding.tvChatTyping.visibility = View.GONE
 
         updateChatRoomHeader()
@@ -1513,6 +1561,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         currentChatIsGroup = false
         currentChatGroupDetails = null
         ChatKeys.activeConversationId = 0
+        clearChatReply()
 
         loadConversations()
         updateChatUnreadBadge()
@@ -1645,12 +1694,14 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             attachmentUrl = attachUrl,
             fileName = fileName,
             fileSize = fileSize,
-            mimeType = mimeType
+            mimeType = mimeType,
+            replyTo = chatReplyTarget?.id ?: 0L
         )
 
         binding.etChatMessage.setText("")
         chatPendingUpload = null
         binding.llChatUploadPreview.visibility = View.GONE
+        clearChatReply()
     }
 
     private val chatTypingHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -2381,6 +2432,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         if (conversationId == currentChatConvId) {
             runOnUiThread {
                 if (::chatMessageAdapter.isInitialized) chatMessageAdapter.markDeleted(messageId)
+                if (chatReplyTarget?.id == messageId) clearChatReply()
             }
         }
     }

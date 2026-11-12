@@ -402,6 +402,9 @@
     <string name="chat_reply_hint">Message</string>
     <string name="chat_reply_you">You</string>
     <string name="chat_reply_failed">Not sent: %1$s</string>
+    <string name="chat_replying_to">Replying to %1$s</string>
+    <string name="chat_quote_deleted">Deleted message</string>
+    <string name="chat_cancel_reply">Cancel reply</string>
     <string name="chat_sender_extension">Extension #%1$s</string>
     <string name="chat_preview_file">📎 File: %1$s</string>
     <string name="chat_preview_document">Document</string>

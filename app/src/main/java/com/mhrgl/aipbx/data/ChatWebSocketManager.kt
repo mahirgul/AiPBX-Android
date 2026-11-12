@@ -146,7 +146,7 @@ class ChatWebSocketManager private constructor() {
         notifyConnectionState(false)
     }
 
-    fun sendMessage(convId: Int, msgType: String, message: String, attachmentUrl: String? = null, fileName: String? = null, fileSize: Long = 0, mimeType: String? = null) {
+    fun sendMessage(convId: Int, msgType: String, message: String, attachmentUrl: String? = null, fileName: String? = null, fileSize: Long = 0, mimeType: String? = null, replyTo: Long = 0) {
         val payload = JSONObject().apply {
             put("action", "send_message")
             put("conversation_id", convId)
@@ -156,6 +156,7 @@ class ChatWebSocketManager private constructor() {
             if (!fileName.isNullOrEmpty()) put("file_name", fileName)
             if (fileSize > 0) put("file_size", fileSize)
             if (!mimeType.isNullOrEmpty()) put("mime_type", mimeType)
+            if (replyTo > 0) put("reply_to", replyTo)
         }.toString()
 
         val sent = webSocket?.send(payload) ?: false

@@ -31,6 +31,24 @@
             android:textStyle="bold"
             android:visibility="gone" />
 
+        <!-- The message this one replies to -->
+        <TextView
+            android:id="@+id/tvQuote"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:background="#14808080"
+            android:drawableStart="@drawable/ic_reply"
+            android:drawablePadding="4dp"
+            android:drawableTint="@color/text_secondary"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <!-- Optional Image Attachment -->
         <ImageView
             android:id="@+id/ivImage"

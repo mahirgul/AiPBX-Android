@@ -397,7 +397,14 @@ data class ChatMessage(
     /** Own messages: "sent", "delivered" or "read". */
     @SerializedName("status") var status: String? = null,
     /** Deleted by its sender: text and attachment are cleared on the server. */
-    @SerializedName("is_deleted") val isDeleted: Boolean = false
+    @SerializedName("is_deleted") val isDeleted: Boolean = false,
+    /** The message this one replies to (0 = not a reply); the quoted sender, text and type. */
+    @SerializedName("reply_to") val replyTo: Long = 0,
+    @SerializedName("reply_sender_ext") val replySenderExt: String? = null,
+    @SerializedName("reply_sender_name") val replySenderName: String? = null,
+    @SerializedName("reply_message") val replyMessage: String? = null,
+    @SerializedName("reply_msg_type") val replyMsgType: String? = null,
+    @SerializedName("reply_is_deleted") val replyIsDeleted: Boolean = false
 )
 
 data class ChatUploadResponse(

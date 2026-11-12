@@ -30,8 +30,8 @@ class ChatMessageAdapter(
     private var isGroup: Boolean = false,
     /** The current session token — for downloading/opening media (a provider, since the token can be refreshed). */
     private val tokenProvider: () -> String? = { null },
-    /** Long press on one of your own messages (offers to delete it). */
-    private val onOwnMessageLongPress: ((ChatMessage) -> Unit)? = null
+    /** Long press on a message (offers Reply, and Delete for your own). */
+    private val onMessageLongPress: ((ChatMessage) -> Unit)? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val messages = mutableListOf<ChatMessage>()
@@ -142,6 +142,7 @@ class ChatMessageAdapter(
 
     inner class MessageViewHolder(itemView: View, private val isMe: Boolean) : RecyclerView.ViewHolder(itemView) {
         private val tvSenderName: TextView? = itemView.findViewById(R.id.tvSenderName)
+        private val tvQuote: TextView = itemView.findViewById(R.id.tvQuote)
         private val tvMessage: TextView = itemView.findViewById(R.id.tvMessage)
         private val tvTime: TextView = itemView.findViewById(R.id.tvTime)
         private val tvStatus: TextView? = itemView.findViewById(R.id.tvStatus)
@@ -164,9 +165,9 @@ class ChatMessageAdapter(
                 }
             }
 
-            // Long press on your own message offers to delete it.
-            if (isMe && !m.isDeleted && m.id > 0 && onOwnMessageLongPress != null) {
-                itemView.setOnLongClickListener { onOwnMessageLongPress?.invoke(m); true }
+            // Long press on any message offers Reply (and Delete for your own).
+            if (!m.isDeleted && m.id > 0 && onMessageLongPress != null) {
+                itemView.setOnLongClickListener { onMessageLongPress?.invoke(m); true }
             } else {
                 itemView.setOnLongClickListener(null)
                 itemView.isLongClickable = false
@@ -188,6 +189,22 @@ class ChatMessageAdapter(
             tvMessage.setTypeface(null, android.graphics.Typeface.NORMAL)
             tvMessage.alpha = 1f
             tvStatus?.visibility = View.VISIBLE
+
+            // The message this one replies to: sender + quoted text above the
+            // message, or the deleted placeholder when the target is gone.
+            if (m.replyTo > 0) {
+                val quoteText = if (m.replyIsDeleted) {
+                    ctx.getString(R.string.chat_quote_deleted)
+                } else {
+                    val who = if (m.replySenderExt == myExtension) ctx.getString(R.string.chat_reply_you)
+                        else m.replySenderName.orEmpty().ifBlank { m.replySenderExt.orEmpty() }
+                    if (who.isNotEmpty()) "$who: ${m.replyMessage.orEmpty()}" else m.replyMessage.orEmpty()
+                }
+                tvQuote.text = quoteText
+                tvQuote.visibility = View.VISIBLE
+            } else {
+                tvQuote.visibility = View.GONE
+            }
 
             // Text message
             if (m.message.isNullOrEmpty()) {
