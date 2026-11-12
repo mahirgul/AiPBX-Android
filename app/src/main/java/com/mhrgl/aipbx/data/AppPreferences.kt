@@ -286,6 +286,11 @@ class AppPreferences(context: Context) {
         get() = prefs.getString(KEY_UPDATE_DOWNLOAD_FILE, "") ?: ""
         set(value) = prefs.edit().putString(KEY_UPDATE_DOWNLOAD_FILE, value).apply()
 
+    /** Epoch millis of the last update check attempt (automatic or manual). */
+    var updateLastCheckTime: Long
+        get() = prefs.getLong(KEY_UPDATE_LAST_CHECK_TIME, 0L)
+        set(value) = prefs.edit().putLong(KEY_UPDATE_LAST_CHECK_TIME, value).apply()
+
     /** The full-screen incoming call explanation was shown once (see FullScreenCallPrompt). */
     var fullScreenPromptShown: Boolean
         get() = prefs.getBoolean(KEY_FULL_SCREEN_PROMPT_SHOWN, false) ||
@@ -458,6 +463,7 @@ class AppPreferences(context: Context) {
         private const val KEY_UPDATE_DISMISSED_VERSION = "update_dismissed_version"
         private const val KEY_UPDATE_DOWNLOAD_ID = "update_download_id"
         private const val KEY_UPDATE_DOWNLOAD_FILE = "update_download_file"
+        private const val KEY_UPDATE_LAST_CHECK_TIME = "update_last_check_time"
         private const val KEY_LAST_RESURRECTION_TS = "last_resurrection_ts"
         private const val KEY_DEVICE_UUID = "device_uuid"
         private const val KEY_LAST_TOKEN_REFRESH_TIME = "last_token_refresh_time"

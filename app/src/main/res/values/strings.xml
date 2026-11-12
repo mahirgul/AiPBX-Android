@@ -527,4 +527,5 @@
     <string name="update_check_now">Check for updates</string>
     <string name="update_up_to_date">You\'re up to date — OwnPBX %1$s is the latest version.</string>
     <string name="update_check_failed">Could not check for updates. Check your connection and try again.</string>
+    <string name="update_rate_limited">GitHub is limiting update checks right now. Try again later.</string>
 </resources>

@@ -38,14 +38,20 @@ import okhttp3.Request
  * behaves the same except it always answers: it ignores the dismissed-version suppression and
  * toasts when up to date or when the check fails.
  *
- * No auth: the repo is public. Unauthenticated GitHub API limit is 60 requests/hour per IP; the
- * check runs at most once per foreground entry and never overlaps itself.
+ * No auth: the repo is public. Unauthenticated GitHub API limit is 60 requests/hour per IP, so
+ * the automatic check runs at most once an hour (see AUTO_CHECK_INTERVAL_MS) and never overlaps
+ * itself — firing on every foreground burned the budget and the next check failed with a
+ * misleading "check your connection". A manual check always runs, and a 403/429 from GitHub gets
+ * its own "rate limited" message instead of blaming the connection.
  */
 object AppUpdateChecker {
     private const val TAG = "AppUpdateChecker"
     private const val LATEST_RELEASE_URL =
         "https://api.github.com/repos/DanversKara/android.OwnPBX.org/releases/latest"
     private const val MIME_APK = "application/vnd.android.package-archive"
+
+    /** Automatic check interval: GitHub allows 60 unauthenticated calls/hour per IP. */
+    private const val AUTO_CHECK_INTERVAL_MS = 60 * 60 * 1000L
 
     private val httpClient =
         OkHttpClient.Builder()
@@ -75,13 +81,22 @@ object AppUpdateChecker {
         @SerializedName("browser_download_url") val downloadUrl: String?,
     )
 
+    /** What the GitHub lookup returned, so the caller can tell the user the truth. */
+    private sealed interface FetchResult {
+        data class Available(val info: UpdateInfo) : FetchResult
+        data class HttpError(val code: Int) : FetchResult
+        data object Failed : FetchResult
+    }
+
     /**
      * Automatic check: called on the 0 -> 1 foreground transition (see AiPbxApp). Silent when up
-     * to date, offline, or on any error; a version the user dismissed is not offered again.
-     * Manual check (manual = true, Settings → Check for updates): the user asked, so it ignores
-     * the dismissed-version suppression and always answers — the update dialog when a newer
-     * release exists, an "up to date" toast when there isn't one, and a failure toast when the
-     * check itself fails.
+     * to date, offline, or on any error; a version the user dismissed is not offered again. Runs
+     * at most once an hour — GitHub allows 60 unauthenticated API calls per hour per IP, and a
+     * check on every foreground burned that budget. Manual check (manual = true, Settings →
+     * Check for updates): the user asked, so it always runs, ignores the dismissed-version
+     * suppression and always answers — the update dialog when a newer release exists, an "up to
+     * date" toast when there isn't one, a "rate limited" toast when GitHub says 403/429, and a
+     * failure toast when the check itself fails.
      */
     fun checkForUpdate(activity: Activity, manual: Boolean = false) {
         if (checkInFlight) return
@@ -91,39 +106,69 @@ object AppUpdateChecker {
         checkInFlight = true
         scope.launch {
             try {
-                val latest = fetchLatestRelease()
-                if (latest == null) {
-                    // No release info (HTTP error, empty body, no APK): the
-                    // automatic check stays silent; a manual check says so.
-                    if (manual) toastOnMain(activity, R.string.update_check_failed)
-                    return@launch
-                }
-                if (!isNewerVersion(latest.version, BuildConfig.VERSION_NAME)) {
-                    if (manual) {
-                        toastOnMain(
-                            activity,
-                            R.string.update_up_to_date,
-                            BuildConfig.VERSION_NAME,
-                        )
-                    }
-                    return@launch
-                }
                 val prefs = AppPreferences.getInstance(activity)
-                // Manual checks ignore the dismissed-version suppression: the
-                // user asked, so a version they tapped Later on still shows.
-                // Showing it again dismisses nothing — the dialog's own
-                // Later/Download handling is unchanged.
-                if (!manual && prefs.updateDismissedVersion == latest.version) return@launch
-                withContext(Dispatchers.Main) {
-                    if (activity.isFinishing || activity.isDestroyed) return@withContext
-                    // Post to the decor view so the window token exists even
-                    // when the check returns during cold start.
-                    activity.window?.decorView?.post { showUpdateDialog(activity, latest) }
-                        ?: showUpdateDialog(activity, latest)
+                if (!manual) {
+                    val lastCheck = prefs.updateLastCheckTime
+                    if (
+                        lastCheck > 0L &&
+                            System.currentTimeMillis() - lastCheck < AUTO_CHECK_INTERVAL_MS
+                    ) {
+                        return@launch
+                    }
+                }
+                // Last attempt, automatic or manual: a fresh manual answer
+                // makes an automatic re-check within the hour pointless.
+                prefs.updateLastCheckTime = System.currentTimeMillis()
+                when (val result = fetchLatestRelease()) {
+                    is FetchResult.Available -> {
+                        val latest = result.info
+                        if (!isNewerVersion(latest.version, BuildConfig.VERSION_NAME)) {
+                            if (manual) {
+                                toastOnMain(
+                                    activity,
+                                    R.string.update_up_to_date,
+                                    BuildConfig.VERSION_NAME,
+                                )
+                            }
+                            return@launch
+                        }
+                        // Manual checks ignore the dismissed-version suppression: the
+                        // user asked, so a version they tapped Later on still shows.
+                        // Showing it again dismisses nothing — the dialog's own
+                        // Later/Download handling is unchanged.
+                        if (!manual && prefs.updateDismissedVersion == latest.version) {
+                            return@launch
+                        }
+                        withContext(Dispatchers.Main) {
+                            if (activity.isFinishing || activity.isDestroyed) return@withContext
+                            // Post to the decor view so the window token exists even
+                            // when the check returns during cold start.
+                            activity.window?.decorView?.post { showUpdateDialog(activity, latest) }
+                                ?: showUpdateDialog(activity, latest)
+                        }
+                    }
+                    is FetchResult.HttpError -> {
+                        // 403/429 is GitHub rate-limiting the check, not a broken
+                        // connection — say so instead of blaming the network.
+                        if (manual) {
+                            val messageRes =
+                                if (result.code == 403 || result.code == 429) {
+                                    R.string.update_rate_limited
+                                } else {
+                                    R.string.update_check_failed
+                                }
+                            toastOnMain(activity, messageRes)
+                        }
+                    }
+                    FetchResult.Failed -> {
+                        // No release info (empty body, no tag, no APK): the
+                        // automatic check stays silent; a manual check says so.
+                        if (manual) toastOnMain(activity, R.string.update_check_failed)
+                    }
                 }
             } catch (e: Exception) {
-                // Offline, rate-limited, bad JSON — the automatic check stays
-                // silent and tries next time; a manual check says so.
+                // Offline, bad JSON — the automatic check stays silent and
+                // tries next time; a manual check says so.
                 Log.d(TAG, "Update check failed", e)
                 if (manual) toastOnMain(activity, R.string.update_check_failed)
             } finally {
@@ -159,38 +204,46 @@ object AppUpdateChecker {
         return false
     }
 
-    private fun fetchLatestRelease(): UpdateInfo? {
+    private fun fetchLatestRelease(): FetchResult {
         val request =
             Request.Builder()
                 .url(LATEST_RELEASE_URL)
                 .header("Accept", "application/vnd.github+json")
                 .header("User-Agent", "OwnPBX-Android")
                 .build()
-        httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                Log.d(TAG, "GitHub latest release: HTTP ${response.code}")
-                return null
-            }
-            val body = response.body?.string() ?: return null
-            val release = gson.fromJson(body, GithubRelease::class.java)
-            val version = release.tagName?.trim()?.removePrefix("v").orEmpty()
-            if (version.isEmpty()) return null
-            val apks =
-                release.assets.filter {
-                    !it.name.isNullOrBlank() &&
-                        it.name.endsWith(".apk") &&
-                        !it.downloadUrl.isNullOrBlank()
+        return try {
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.d(TAG, "GitHub latest release: HTTP ${response.code}")
+                    return FetchResult.HttpError(response.code)
                 }
-            if (apks.isEmpty()) return null
-            // Prefer the release-signed APK; fall back to the debug one when
-            // the workflow only attached that (see auto-release.yml).
-            val asset = apks.firstOrNull { !it.name!!.contains("-debug") } ?: apks.first()
-            return UpdateInfo(
-                version = version,
-                downloadUrl = asset.downloadUrl!!,
-                fileName = asset.name!!,
-                isDebugAsset = asset.name.contains("-debug"),
-            )
+                val body = response.body?.string() ?: return FetchResult.Failed
+                val release = gson.fromJson(body, GithubRelease::class.java)
+                val version = release.tagName?.trim()?.removePrefix("v").orEmpty()
+                if (version.isEmpty()) return FetchResult.Failed
+                val apks =
+                    release.assets.filter {
+                        !it.name.isNullOrBlank() &&
+                            it.name.endsWith(".apk") &&
+                            !it.downloadUrl.isNullOrBlank()
+                    }
+                if (apks.isEmpty()) return FetchResult.Failed
+                // Prefer the release-signed APK; fall back to the debug one when
+                // the workflow only attached that (see auto-release.yml).
+                val asset = apks.firstOrNull { !it.name!!.contains("-debug") } ?: apks.first()
+                FetchResult.Available(
+                    UpdateInfo(
+                        version = version,
+                        downloadUrl = asset.downloadUrl!!,
+                        fileName = asset.name!!,
+                        isDebugAsset = asset.name.contains("-debug"),
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            // Offline, DNS failure, timeout.
+            Log.d(TAG, "Update check failed", e)
+            FetchResult.Failed
         }
     }
 
