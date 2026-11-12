@@ -12,8 +12,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
-import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import com.mhrgl.aipbx.BuildConfig
 import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.data.AppPreferences
@@ -28,6 +26,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * In-app update check against the public GitHub releases of the OwnPBX Android app
@@ -58,7 +58,6 @@ object AppUpdateChecker {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .build()
-    private val gson = Gson()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Volatile private var checkInFlight = false
@@ -71,15 +70,8 @@ object AppUpdateChecker {
         val isDebugAsset: Boolean,
     )
 
-    private data class GithubRelease(
-        @SerializedName("tag_name") val tagName: String?,
-        @SerializedName("assets") val assets: List<GithubAsset> = emptyList(),
-    )
-
-    private data class GithubAsset(
-        @SerializedName("name") val name: String?,
-        @SerializedName("browser_download_url") val downloadUrl: String?,
-    )
+    /** One file attached to a release (built from the JSON by hand, see fetchLatestRelease). */
+    private data class GithubAsset(val name: String?, val downloadUrl: String?)
 
     /** What the GitHub lookup returned, so the caller can tell the user the truth. */
     private sealed interface FetchResult {
@@ -218,15 +210,28 @@ object AppUpdateChecker {
                     return FetchResult.HttpError(response.code)
                 }
                 val body = response.body?.string() ?: return FetchResult.Failed
-                val release = gson.fromJson(body, GithubRelease::class.java)
-                val version = release.tagName?.trim()?.removePrefix("v").orEmpty()
+                // Read with org.json, not Gson: the release build is shrunk by R8, which saw
+                // nothing in the code write the Gson classes' fields (Gson fills them by
+                // reflection) and treated them as always null — so every check in the installed
+                // app "failed" with "check your connection" although GitHub had answered.
+                val release = JSONObject(body)
+                val version = release.optString("tag_name").trim().removePrefix("v")
                 if (version.isEmpty()) return FetchResult.Failed
+                val assetsJson = release.optJSONArray("assets") ?: JSONArray()
                 val apks =
-                    release.assets.filter {
-                        !it.name.isNullOrBlank() &&
-                            it.name.endsWith(".apk") &&
-                            !it.downloadUrl.isNullOrBlank()
-                    }
+                    (0 until assetsJson.length())
+                        .mapNotNull { assetsJson.optJSONObject(it) }
+                        .map {
+                            GithubAsset(
+                                it.optString("name").ifBlank { null },
+                                it.optString("browser_download_url").ifBlank { null },
+                            )
+                        }
+                        .filter {
+                            !it.name.isNullOrBlank() &&
+                                it.name.endsWith(".apk") &&
+                                !it.downloadUrl.isNullOrBlank()
+                        }
                 if (apks.isEmpty()) return FetchResult.Failed
                 // Prefer the release-signed APK; fall back to the debug one when
                 // the workflow only attached that (see auto-release.yml).
