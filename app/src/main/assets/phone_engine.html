@@ -472,6 +472,10 @@
             });
         }
 
+        // "Call from": the number picked for the next call; the PBX accepts only the user's own numbers.
+        var callFrom = "";
+        function setCallFrom(n) { callFrom = (n || "").replace(/[^0-9+]/g, ''); }
+
         function makeCall(target, domain, turnUrl, turnUser, turnPass, video) {
             try {
                 if (!ua) {
@@ -535,6 +539,10 @@
                         }
                     }
                 };
+
+                if (callFrom) {
+                    options.extraHeaders = ["X-OwnPBX-CID: " + callFrom];
+                }
 
                 if (video) {
                     videoCallStream(video).then(function(stream) {

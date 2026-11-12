@@ -168,6 +168,19 @@
             android:padding="16dp"
             android:visibility="visible">
 
+            <!-- "Call from": shown when the PBX gave this user outgoing numbers; tap to pick. -->
+            <TextView
+                android:id="@+id/tvCallFrom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/card_rounded_bg"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"

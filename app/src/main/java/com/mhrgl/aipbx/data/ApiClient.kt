@@ -965,6 +965,39 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
         }
     }
 
+    /** "Call from": the numbers this user may call out as (default first). Parsed with org.json (no R8/Gson reflection). */
+    suspend fun getCallerIds(baseUrl: String, token: String): Result<List<CallerIdOption>> =
+        callerIdRequest(baseUrl, token, null)
+
+    /** Makes one of the user's numbers the default ("" = the line's own number). */
+    suspend fun setDefaultCallerId(baseUrl: String, token: String, number: String): Result<List<CallerIdOption>> =
+        callerIdRequest(baseUrl, token, JSONObject().put("default", number).toString())
+
+    private suspend fun callerIdRequest(baseUrl: String, token: String, postBody: String?): Result<List<CallerIdOption>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val endpoint = baseUrl.trim().trimEnd('/') + "/api/mobile/caller_ids.php"
+                val builder = Request.Builder().url(endpoint).addHeader("Authorization", "Bearer $token")
+                if (postBody != null) builder.post(postBody.toRequestBody(jsonMediaType)) else builder.get()
+                client.newCall(builder.build()).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val json = try { JSONObject(body) } catch (e: Exception) { null }
+                    if (!response.isSuccessful || json == null || !json.optBoolean("success")) {
+                        val msg = json?.optString("error")?.takeIf { it.isNotBlank() } ?: "HTTP ${response.code}"
+                        return@withContext Result.failure(Exception(msg))
+                    }
+                    val arr = json.optJSONArray("numbers") ?: JSONArray()
+                    val list = (0 until arr.length()).map { i ->
+                        val o = arr.getJSONObject(i)
+                        CallerIdOption(o.optString("number"), o.optString("title"), o.optBoolean("default"))
+                    }
+                    Result.success(list)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     suspend fun registerFcmToken(
         baseUrl: String,
         token: String,

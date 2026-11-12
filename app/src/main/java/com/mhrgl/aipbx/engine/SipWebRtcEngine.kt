@@ -257,7 +257,8 @@ class SipWebRtcEngine(private val context: Context) {
         turnUser: String? = null,
         turnPass: String? = null,
         displayName: String? = null,
-        video: VideoLimits? = null
+        video: VideoLimits? = null,
+        callFrom: String? = null
     ) {
         activeCallerName = if (!displayName.isNullOrEmpty()) displayName else targetNumber
         activeCallerNumber = targetNumber
@@ -265,7 +266,8 @@ class SipWebRtcEngine(private val context: Context) {
         listener?.onCallStatusChanged(CallStatus.CONNECTING)
 
         handler.post {
-            val script = "makeCall(${JSONObject.quote(targetNumber)}, ${JSONObject.quote(domain)}, " +
+            val script = "setCallFrom(${JSONObject.quote(callFrom ?: "")}); " +
+                    "makeCall(${JSONObject.quote(targetNumber)}, ${JSONObject.quote(domain)}, " +
                     "${turnUrl?.let { JSONObject.quote(it) } ?: "null"}, " +
                     "${turnUser?.let { JSONObject.quote(it) } ?: "null"}, " +
                     "${turnPass?.let { JSONObject.quote(it) } ?: "null"}, ${video?.toJs() ?: "null"});"

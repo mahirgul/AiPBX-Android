@@ -36,6 +36,7 @@ import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
+import com.mhrgl.aipbx.model.CallerIdOption
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mhrgl.aipbx.BuildConfig
@@ -69,6 +70,10 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     private lateinit var binding: ActivityDialerBinding
     private lateinit var prefs: AppPreferences
     private val apiClient by lazy { ApiClient { prefs } }
+
+    // "Call from": the user's outgoing numbers, and the one picked for calls (null = the default).
+    private var callerIds: List<CallerIdOption> = emptyList()
+    private var callFrom: String? = null
 
     private var pbxService: PbxForegroundService? = null
     private var isBound = false
@@ -282,6 +287,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         ChatWebSocketManager.instance.addListener(this)
         updateFullScreenCallButton()
         refreshVoicemailBadge()
+        refreshCallerIds()
 
         if (currentTab == Tab.HISTORY) {
             loadCallHistory(currentFilter)
@@ -606,6 +612,62 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         updateBackspaceVisibility()
     }
 
+    private fun refreshCallerIds() {
+        val sUrl = prefs.serverUrl.ifBlank { return }
+        val token = prefs.token ?: return
+        lifecycleScope.launch {
+            apiClient.getCallerIds(sUrl, token).onSuccess { list ->
+                callerIds = list
+                if (callFrom != null && list.none { it.number == callFrom }) callFrom = null
+                renderCallFrom()
+            }
+        }
+    }
+
+    private fun renderCallFrom() {
+        val view = binding.tvCallFrom
+        if (callerIds.isEmpty()) {
+            view.visibility = View.GONE
+            return
+        }
+        val current = callerIds.firstOrNull { it.number == callFrom } ?: callerIds.firstOrNull { it.isDefault }
+        view.text = getString(R.string.call_from_label, current?.label() ?: getString(R.string.call_from_line))
+        view.visibility = View.VISIBLE
+        view.setOnClickListener { showCallFromPicker() }
+    }
+
+    private fun showCallFromPicker() {
+        val hasDefault = callerIds.any { it.isDefault }
+        // Without a default the line's own number is a choice too ("" = no header, the PBX decides).
+        val options = (if (hasDefault) emptyList() else listOf(CallerIdOption("", getString(R.string.call_from_line), true))) + callerIds
+        val current = callFrom ?: (callerIds.firstOrNull { it.isDefault }?.number ?: "")
+        var picked = options.indexOfFirst { it.number == current }.coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.call_from_title)
+            .setSingleChoiceItems(options.map<CallerIdOption, CharSequence> { if (it.number.isEmpty()) it.title else it.label() }.toTypedArray(), picked) { _, which -> picked = which }
+            .setPositiveButton(R.string.call_from_use) { _, _ ->
+                callFrom = options[picked].number.ifEmpty { null }
+                renderCallFrom()
+            }
+            .setNeutralButton(R.string.call_from_make_default) { _, _ ->
+                val number = options[picked].number
+                val sUrl = prefs.serverUrl.ifBlank { return@setNeutralButton }
+                val token = prefs.token ?: return@setNeutralButton
+                lifecycleScope.launch {
+                    apiClient.setDefaultCallerId(sUrl, token, number).onSuccess { list ->
+                        callerIds = list
+                        callFrom = null
+                        renderCallFrom()
+                        Toast.makeText(this@DialerActivity, R.string.call_from_default_saved, Toast.LENGTH_SHORT).show()
+                    }.onFailure { e ->
+                        Toast.makeText(this@DialerActivity, e.message ?: "", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun setDialNumber(number: String) {
         binding.tvDigits.setText(number)
         binding.tvDigits.setSelection(binding.tvDigits.text?.length ?: 0)
@@ -675,7 +737,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             turnUser = prefs.turnUsername,
             turnPass = prefs.turnCredential,
             displayName = displayName,
-            video = if (withVideo) prefs.videoLimits else null
+            video = if (withVideo) prefs.videoLimits else null,
+            callFrom = callFrom
         )
 
         val callIntent = Intent(this, CallActivity::class.java)

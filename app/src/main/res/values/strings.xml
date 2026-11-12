@@ -531,4 +531,10 @@
     <string name="update_up_to_date">You\'re up to date — OwnPBX %1$s is the latest version.</string>
     <string name="update_check_failed">Could not check for updates. Check your connection and try again.</string>
     <string name="update_rate_limited">GitHub is limiting update checks right now. Try again later.</string>
+    <string name="call_from_label">Calling from: %1$s ▾</string>
+    <string name="call_from_line">Line\'s own number</string>
+    <string name="call_from_title">Call from</string>
+    <string name="call_from_use">Use for calls</string>
+    <string name="call_from_make_default">Make default</string>
+    <string name="call_from_default_saved">Default number saved</string>
 </resources>

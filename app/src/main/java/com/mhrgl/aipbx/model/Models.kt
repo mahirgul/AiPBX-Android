@@ -440,3 +440,8 @@ data class GenericChatActionResponse(
     @SerializedName("error") val error: String? = null
 )
 
+
+/** One number the user may call out as ("Call from"). */
+data class CallerIdOption(val number: String, val title: String, val isDefault: Boolean) {
+    fun label(): String = if (title.isBlank()) number else "$number · $title"
+}
