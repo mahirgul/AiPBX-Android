@@ -1501,6 +1501,42 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             }
         }
 
+    /**
+     * Deletes a whole chat conversation for this user only. The other
+     * participant keeps their copy; a new message revives the thread.
+     * (Not the SMS delete_thread behaviour, which hard-deletes the shared
+     * thread's messages.)
+     */
+    suspend fun deleteChatConversation(baseUrl: String, token: String, convId: Int): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val endpoint = "$cleanUrl/chat/api/conversations/delete"
+
+                val jsonBody = JSONObject().apply {
+                    put("conversation_id", convId)
+                }.toString()
+
+                val request = Request.Builder()
+                    .url(endpoint)
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(jsonBody.toRequestBody(jsonMediaType))
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val res = gson.fromJson(body, GenericChatActionResponse::class.java)
+                    if (response.isSuccessful && res != null && res.success) {
+                        Result.success(true)
+                    } else {
+                        Result.failure(Exception(res?.error ?: L10n.str(R.string.api_conversation_delete_failed, response.code)))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
     suspend fun deleteGroup(baseUrl: String, token: String, convId: Int): Result<Boolean> =
         withContext(Dispatchers.IO) {
             try {

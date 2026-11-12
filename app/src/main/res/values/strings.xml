@@ -413,6 +413,9 @@
     <string name="chat_delete_message_confirm">Delete this message for everyone in the chat?</string>
     <string name="err_message_delete_not_allowed">This message can no longer be deleted.</string>
     <string name="api_message_delete_failed">Could not delete the message (HTTP %1$s)</string>
+    <string name="chat_delete_conversation">Delete conversation</string>
+    <string name="chat_delete_conversation_confirm">Delete this conversation? This removes it from your chats. The other person keeps their copy.</string>
+    <string name="api_conversation_delete_failed">Could not delete the conversation (HTTP %1$s)</string>
     <string name="vm_title">Voicemail</string>
     <string name="vm_empty">No voicemail messages</string>
     <string name="vm_new">New</string>

@@ -1026,6 +1026,32 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             .show()
     }
 
+    private fun confirmDeleteChatConversation(conv: ChatConversation) {
+        // Contact placeholders (id 0) are not real conversations: long-pressing
+        // one while searching must not offer a delete.
+        if (conv.id <= 0) return
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.chat_delete_conversation))
+            .setMessage(getString(R.string.chat_delete_conversation_confirm))
+            .setPositiveButton(getString(R.string.ui_delete)) { _, _ ->
+                val url = prefs.serverUrl
+                val token = prefs.token ?: return@setPositiveButton
+                lifecycleScope.launch {
+                    apiClient.deleteChatConversation(url, token, conv.id)
+                        .onSuccess {
+                            allConversations.removeAll { it.id == conv.id }
+                            filterConversations(binding.etChatSearch.text?.toString() ?: "")
+                            updateChatUnreadBadge()
+                        }
+                        .onFailure {
+                            Toast.makeText(this@DialerActivity, it.message, Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
+            .setNegativeButton(getString(R.string.btn_dismiss), null)
+            .show()
+    }
+
     // Long press on a chat message: Reply for any message, Delete for your own.
     private fun showChatMessageActions(msg: ChatMessage) {
         val mine = msg.isMe || msg.senderExt == (prefs.extension ?: "")
@@ -1068,12 +1094,15 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     }
 
     private fun setupChatTab() {
-        chatAdapter = ChatConversationAdapter { conv ->
-            val isGroup = conv.type == "group"
-            val targetExt = if (isGroup) "" else (conv.targetExt ?: "")
-            val displayName = if (isGroup) (conv.title ?: getString(R.string.group_chat)) else (conv.targetName ?: conv.targetExt ?: "")
-            openChatRoom(conv.id, targetExt, displayName, isGroup)
-        }
+        chatAdapter = ChatConversationAdapter(
+            onConversationClick = { conv ->
+                val isGroup = conv.type == "group"
+                val targetExt = if (isGroup) "" else (conv.targetExt ?: "")
+                val displayName = if (isGroup) (conv.title ?: getString(R.string.group_chat)) else (conv.targetName ?: conv.targetExt ?: "")
+                openChatRoom(conv.id, targetExt, displayName, isGroup)
+            },
+            onConversationLongPress = { conv -> confirmDeleteChatConversation(conv) }
+        )
         binding.rvChatConversations.layoutManager = LinearLayoutManager(this)
         binding.rvChatConversations.adapter = chatAdapter
 

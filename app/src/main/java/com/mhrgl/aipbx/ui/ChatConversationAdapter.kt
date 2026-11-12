@@ -9,7 +9,8 @@ import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.model.ChatConversation
 
 class ChatConversationAdapter(
-    private val onConversationClick: (ChatConversation) -> Unit
+    private val onConversationClick: (ChatConversation) -> Unit,
+    private val onConversationLongPress: (ChatConversation) -> Unit = {}
 ) : RecyclerView.Adapter<ChatConversationAdapter.ViewHolder>() {
 
     private val items = mutableListOf<ChatConversation>()
@@ -76,6 +77,11 @@ class ChatConversationAdapter(
 
             itemView.setOnClickListener {
                 onConversationClick(item)
+            }
+
+            itemView.setOnLongClickListener {
+                onConversationLongPress(item)
+                true
             }
         }
 
