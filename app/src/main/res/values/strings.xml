@@ -524,4 +524,7 @@
     <string name="update_allow_unknown_sources">Allow OwnPBX to install apps, then tap Download again.</string>
     <string name="update_signature_mismatch">This update cannot install over the current build — uninstall the app first, then install the new version.</string>
     <string name="update_install_failed">Could not open the installer for the downloaded update.</string>
+    <string name="update_check_now">Check for updates</string>
+    <string name="update_up_to_date">You\'re up to date — OwnPBX %1$s is the latest version.</string>
+    <string name="update_check_failed">Could not check for updates. Check your connection and try again.</string>
 </resources>

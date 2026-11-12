@@ -1,5 +1,6 @@
 package com.mhrgl.aipbx.ui
 
+import com.mhrgl.aipbx.util.AppUpdateChecker
 import com.mhrgl.aipbx.util.BatteryPrompt
 import com.mhrgl.aipbx.util.EmojiPicker
 import com.mhrgl.aipbx.util.FullScreenCallPrompt
@@ -2132,6 +2133,12 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
         binding.btnSyncDevice.setOnClickListener {
             syncDeviceToken()
+        }
+
+        // Manual update check: always answers, even for a version the
+        // automatic foreground check already dismissed (see AppUpdateChecker).
+        binding.btnCheckForUpdates.setOnClickListener {
+            AppUpdateChecker.checkForUpdate(this, manual = true)
         }
 
         binding.btnLanguage.text = getString(R.string.language_current, L10n.displayName())

@@ -1504,11 +1504,24 @@
                             android:textStyle="bold" />
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnSyncDevice"
+                            android:id="@+id/btnCheckForUpdates"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="44dp"
                             android:layout_marginTop="12dp"
+                            android:text="@string/update_check_now"
+                            android:textAllCaps="false"
+                            android:textColor="@color/primary"
+                            android:textSize="13sp"
+                            app:cornerRadius="8dp"
+                            app:strokeColor="@color/primary" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSyncDevice"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="44dp"
+                            android:layout_marginTop="8dp"
                             android:text="@string/ui_refresh_device"
                             android:textAllCaps="false"
                             android:textColor="@color/primary"

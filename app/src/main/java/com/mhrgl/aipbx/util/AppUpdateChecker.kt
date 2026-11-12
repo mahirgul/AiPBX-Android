@@ -34,7 +34,9 @@ import okhttp3.Request
  * (DanversKara/android.OwnPBX.org). Runs when the app comes to the foreground; silent when up to
  * date, offline, or on any error. When a newer release exists, one dialog per version offers to
  * download the APK and install it from inside the app — the old My Phone app checked on every
- * foreground, this is the same behaviour here.
+ * foreground, this is the same behaviour here. A manual check (Settings → Check for updates)
+ * behaves the same except it always answers: it ignores the dismissed-version suppression and
+ * toasts when up to date or when the check fails.
  *
  * No auth: the repo is public. Unauthenticated GitHub API limit is 60 requests/hour per IP; the
  * check runs at most once per foreground entry and never overlaps itself.
@@ -73,8 +75,15 @@ object AppUpdateChecker {
         @SerializedName("browser_download_url") val downloadUrl: String?,
     )
 
-    /** Called on the 0 -> 1 foreground transition (see AiPbxApp). */
-    fun checkForUpdate(activity: Activity) {
+    /**
+     * Automatic check: called on the 0 -> 1 foreground transition (see AiPbxApp). Silent when up
+     * to date, offline, or on any error; a version the user dismissed is not offered again.
+     * Manual check (manual = true, Settings → Check for updates): the user asked, so it ignores
+     * the dismissed-version suppression and always answers — the update dialog when a newer
+     * release exists, an "up to date" toast when there isn't one, and a failure toast when the
+     * check itself fails.
+     */
+    fun checkForUpdate(activity: Activity, manual: Boolean = false) {
         if (checkInFlight) return
         if (activity.isFinishing || activity.isDestroyed) return
         // Never pop an update dialog over a call screen.
@@ -82,10 +91,29 @@ object AppUpdateChecker {
         checkInFlight = true
         scope.launch {
             try {
-                val latest = fetchLatestRelease() ?: return@launch
-                if (!isNewerVersion(latest.version, BuildConfig.VERSION_NAME)) return@launch
+                val latest = fetchLatestRelease()
+                if (latest == null) {
+                    // No release info (HTTP error, empty body, no APK): the
+                    // automatic check stays silent; a manual check says so.
+                    if (manual) toastOnMain(activity, R.string.update_check_failed)
+                    return@launch
+                }
+                if (!isNewerVersion(latest.version, BuildConfig.VERSION_NAME)) {
+                    if (manual) {
+                        toastOnMain(
+                            activity,
+                            R.string.update_up_to_date,
+                            BuildConfig.VERSION_NAME,
+                        )
+                    }
+                    return@launch
+                }
                 val prefs = AppPreferences.getInstance(activity)
-                if (prefs.updateDismissedVersion == latest.version) return@launch
+                // Manual checks ignore the dismissed-version suppression: the
+                // user asked, so a version they tapped Later on still shows.
+                // Showing it again dismisses nothing — the dialog's own
+                // Later/Download handling is unchanged.
+                if (!manual && prefs.updateDismissedVersion == latest.version) return@launch
                 withContext(Dispatchers.Main) {
                     if (activity.isFinishing || activity.isDestroyed) return@withContext
                     // Post to the decor view so the window token exists even
@@ -94,11 +122,21 @@ object AppUpdateChecker {
                         ?: showUpdateDialog(activity, latest)
                 }
             } catch (e: Exception) {
-                // Offline, rate-limited, bad JSON — stay silent, try next time.
+                // Offline, rate-limited, bad JSON — the automatic check stays
+                // silent and tries next time; a manual check says so.
                 Log.d(TAG, "Update check failed", e)
+                if (manual) toastOnMain(activity, R.string.update_check_failed)
             } finally {
                 checkInFlight = false
             }
+        }
+    }
+
+    /** Manual-check feedback, shown on the main thread from the application context. */
+    private suspend fun toastOnMain(activity: Activity, messageRes: Int, vararg args: Any) {
+        withContext(Dispatchers.Main) {
+            val text = activity.applicationContext.getString(messageRes, *args)
+            Toast.makeText(activity.applicationContext, text, Toast.LENGTH_LONG).show()
         }
     }
 
