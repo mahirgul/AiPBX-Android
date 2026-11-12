@@ -69,7 +69,7 @@ class ContactSelectionAdapter(
         private val tvDetail: TextView = itemView.findViewById(R.id.tvContactDetail)
 
         fun bind(item: ContactItem) {
-            val displayName = item.name ?: "Dahili ${item.extension}"
+            val displayName = item.name ?: "Extension ${item.extension}"
             tvName.text = displayName
 
             val roleStr = item.roleName?.takeIf { it.isNotEmpty() } ?: item.role?.takeIf { it.isNotEmpty() } ?: itemView.context.getString(R.string.contact_role_company)

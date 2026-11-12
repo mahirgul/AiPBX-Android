@@ -47,7 +47,7 @@ class GroupParticipantAdapter(
         private val btnAction: ImageButton = itemView.findViewById(R.id.btnMemberAction)
 
         fun bind(participant: ChatParticipant) {
-            val displayName = participant.name ?: "Dahili ${participant.extension}"
+            val displayName = participant.name ?: "Extension ${participant.extension}"
             tvName.text = if (participant.extension == myExtension) itemView.context.getString(R.string.participant_you, displayName) else displayName
             tvExtension.text = itemView.context.getString(R.string.extension_label_participant, participant.extension)
 
