@@ -33,6 +33,9 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Install app updates downloaded in-app (Android 8+; see AppUpdateChecker) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".AiPbxApp"
         android:allowBackup="false"
@@ -182,6 +185,15 @@
         <receiver
             android:name=".service.ChatReplyReceiver"
             android:exported="false" />
+
+        <!-- App-update download: fires the installer when the APK finishes downloading -->
+        <receiver
+            android:name=".util.AppUpdateDownloadReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
 
         <!-- Boot Receiver for Auto-Start on Phone Reboot -->
         <receiver

@@ -5,6 +5,8 @@
     <cache-path name="chat_attachments" path="attachments/" />
     <cache-path name="fax" path="fax/" />
     <external-files-path name="external_logs" path="logs/" />
+    <!-- Update APKs downloaded to the public Downloads folder (see AppUpdateChecker) -->
+    <external-path name="public_downloads" path="Download/" />
     <external-cache-path name="external_cache_logs" path="logs/" />
     <files-path name="internal_logs" path="logs/" />
 </paths>

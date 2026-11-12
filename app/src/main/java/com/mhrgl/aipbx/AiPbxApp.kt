@@ -9,6 +9,7 @@ import com.mhrgl.aipbx.data.ApiClient
 import com.mhrgl.aipbx.data.AppPreferences
 import com.mhrgl.aipbx.service.PbxForegroundService
 import com.mhrgl.aipbx.service.SessionExpiry
+import com.mhrgl.aipbx.util.AppUpdateChecker
 import com.mhrgl.aipbx.util.L10n
 import java.io.File
 import java.io.PrintWriter
@@ -26,7 +27,10 @@ class AiPbxApp : Application() {
 
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
-                if (startedActivities++ == 0) ChatWebSocketManager.instance.setActive(true)
+                if (startedActivities++ == 0) {
+                    ChatWebSocketManager.instance.setActive(true)
+                    AppUpdateChecker.checkForUpdate(activity)
+                }
                 isInForeground = startedActivities > 0
             }
             override fun onActivityStopped(activity: Activity) {

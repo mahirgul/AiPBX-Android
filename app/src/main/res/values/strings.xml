@@ -514,4 +514,14 @@
     <string name="err_camera_permission_video">No camera permission: the call continues with audio only.</string>
     <string name="err_camera_unavailable">Camera not available: the call continues with audio only.</string>
     <string name="contacts_extensions_listed">extensions listed</string>
+
+    <!-- In-app update check (see AppUpdateChecker) -->
+    <string name="update_title">Update available: OwnPBX %1$s</string>
+    <string name="update_message">A new version of OwnPBX is available. Download it now to update from inside the app?</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+    <string name="update_downloading">Downloading OwnPBX %1$s</string>
+    <string name="update_allow_unknown_sources">Allow OwnPBX to install apps, then tap Download again.</string>
+    <string name="update_signature_mismatch">This update cannot install over the current build — uninstall the app first, then install the new version.</string>
+    <string name="update_install_failed">Could not open the installer for the downloaded update.</string>
 </resources>

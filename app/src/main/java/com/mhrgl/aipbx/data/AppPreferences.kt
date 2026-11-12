@@ -271,6 +271,21 @@ class AppPreferences(context: Context) {
             appContext.getSharedPreferences(FALLBACK_PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean(KEY_BATTERY_PROMPT_SHOWN, value).apply()
         }
 
+    /** Latest release version the user skipped or already acted on — not shown again. */
+    var updateDismissedVersion: String
+        get() = prefs.getString(KEY_UPDATE_DISMISSED_VERSION, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_UPDATE_DISMISSED_VERSION, value).apply()
+
+    /** DownloadManager id of the in-progress update APK download (-1 = none). */
+    var updateDownloadId: Long
+        get() = prefs.getLong(KEY_UPDATE_DOWNLOAD_ID, -1L)
+        set(value) = prefs.edit().putLong(KEY_UPDATE_DOWNLOAD_ID, value).apply()
+
+    /** File name of the update APK being downloaded (public Downloads folder). */
+    var updateDownloadFileName: String
+        get() = prefs.getString(KEY_UPDATE_DOWNLOAD_FILE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_UPDATE_DOWNLOAD_FILE, value).apply()
+
     /** The full-screen incoming call explanation was shown once (see FullScreenCallPrompt). */
     var fullScreenPromptShown: Boolean
         get() = prefs.getBoolean(KEY_FULL_SCREEN_PROMPT_SHOWN, false) ||
@@ -440,6 +455,9 @@ class AppPreferences(context: Context) {
         private const val KEY_SLEEPING_WARNING_SHOWN_AT = "sleeping_warning_shown_at"
         private const val KEY_FULL_SCREEN_PROMPT_SHOWN = "full_screen_prompt_shown"
         private const val KEY_FULL_SCREEN_USER_ALLOWED = "full_screen_user_allowed"
+        private const val KEY_UPDATE_DISMISSED_VERSION = "update_dismissed_version"
+        private const val KEY_UPDATE_DOWNLOAD_ID = "update_download_id"
+        private const val KEY_UPDATE_DOWNLOAD_FILE = "update_download_file"
         private const val KEY_LAST_RESURRECTION_TS = "last_resurrection_ts"
         private const val KEY_DEVICE_UUID = "device_uuid"
         private const val KEY_LAST_TOKEN_REFRESH_TIME = "last_token_refresh_time"
