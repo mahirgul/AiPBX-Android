@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.data.SimpleImageLoader
 import com.mhrgl.aipbx.model.ChatMessage
+import com.mhrgl.aipbx.util.MediaUrls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -325,14 +326,8 @@ class ChatMessageAdapter(
             return path.substring(0, idx) + "/media/thumbs/" + name.substring(0, dot) + "_thumb" + name.substring(dot)
         }
 
-        private fun resolveMediaUrl(path: String): String {
-            if (path.startsWith("http://") || path.startsWith("https://")) {
-                return path
-            }
-            val cleanBase = baseUrl.trimEnd('/')
-            val cleanPath = "/" + path.trimStart('/')
-            return cleanBase + cleanPath
-        }
+        // The session token goes with the request: only ever to this PBX.
+        private fun resolveMediaUrl(path: String): String = MediaUrls.resolve(baseUrl, path)
 
         private fun formatTime(dateStr: String): String {
             return try {
