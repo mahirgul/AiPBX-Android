@@ -160,7 +160,6 @@ class CallHistoryAdapter(
                 val actions = mutableListOf<Pair<String, () -> Unit>>(
                     context.getString(R.string.ui_call) to { onCallClick(targetCallParty, partyName) }
                 )
-                val video = onVideoCallClick.takeIf { videoEnabled }
                 if (video != null) actions.add(context.getString(R.string.ui_video_call) to { video(targetCallParty, partyName) })
                 if (canChat) actions.add(context.getString(R.string.ui_chat) to { onChatClick(partyStr, partyName) })
                 AlertDialog.Builder(context)

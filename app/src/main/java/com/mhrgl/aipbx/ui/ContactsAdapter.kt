@@ -13,9 +13,9 @@ import com.mhrgl.aipbx.model.ContactItem
 import com.mhrgl.aipbx.util.SearchUtils
 
 /**
- * Contacts list. Tapping a row only offers the choices (call or chat); the call
- * and chat buttons on the right act at once. Phone (device) contacts have no
- * PBX chat, so they offer calling only.
+ * Contacts list. Tapping a row only offers the choices (call, video call, chat);
+ * the buttons on the right act at once. Phone (device) contacts have no PBX chat
+ * or video, so they offer calling only.
  */
 class ContactsAdapter(
     private val onCallClick: (String, String) -> Unit,
@@ -125,6 +125,10 @@ class ContactsAdapter(
             val isDevice = item.role == context.getString(R.string.contact_role_device)
             val chat = onChatClick.takeIf { !isDevice }
             binding.btnChatContact.visibility = if (chat != null) View.VISIBLE else View.GONE
+            // The same choices as in the history: video only to company extensions.
+            val video = onVideoCallClick.takeIf { videoEnabled && !isDevice }
+            binding.btnVideoContact.visibility = if (video != null) View.VISIBLE else View.GONE
+            binding.btnVideoContact.setOnClickListener { video?.invoke(item.extension, item.name) }
 
             binding.btnCallContact.setOnClickListener {
                 onCallClick(item.extension, item.name)
@@ -138,7 +142,6 @@ class ContactsAdapter(
                 val actions = mutableListOf<Pair<String, () -> Unit>>(
                     context.getString(R.string.ui_call) to { onCallClick(item.extension, item.name) }
                 )
-                val video = onVideoCallClick.takeIf { videoEnabled && !isDevice }
                 if (video != null) actions.add(context.getString(R.string.ui_video_call) to { video(item.extension, item.name) })
                 if (chat != null) actions.add(context.getString(R.string.ui_chat) to { chat(item.extension, item.name) })
                 AlertDialog.Builder(context)
