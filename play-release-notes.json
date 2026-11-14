@@ -1,9 +1,9 @@
 {
   "_comment": "'What's new' text for Google Play (max 500 characters per language). Update it with every new versionName; upload_to_play_console.py uses it only when 'version' matches the app's versionName, otherwise a neutral text.",
-  "version": "1.77.0",
+  "version": "1.77.2",
   "notes": {
-    "en-US": "AiPBX v1.77.0: Group voice and video conference calls from chat, plus call-state and session security improvements.",
-    "tr-TR": "AiPBX v1.77.0: Sohbetten grup sesli ve görüntülü konferans aramaları ile arama durumu ve oturum güvenliği iyileştirmeleri."
+    "en-US": "AiPBX v1.77.2: Your company's logo and colour from the server on the sign-in screen and in the header (a dark-theme logo in dark mode). Contacts have a video call button; fax lines are no longer listed.",
+    "tr-TR": "AiPBX v1.77.2: Şirketinizin logosu ve rengi sunucudan gelir; giriş ekranında ve üst çubukta görünür (karanlık temada koyu logo). Kişilerde görüntülü arama düğmesi var; faks hatları artık listelenmiyor."
   },
   "fallback": {
     "en-US": "Bug fixes and improvements.",
