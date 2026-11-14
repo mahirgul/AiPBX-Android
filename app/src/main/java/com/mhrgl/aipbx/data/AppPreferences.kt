@@ -280,6 +280,26 @@ class AppPreferences(context: Context) : SessionRefreshStore {
         get() = prefs.getString(KEY_BRAND_SUB, DEFAULT_BRAND_SUB) ?: DEFAULT_BRAND_SUB
         set(value) = prefs.edit().putString(KEY_BRAND_SUB, value).apply()
 
+    /** Server path of the logo saved in files/brand_logo.png ("" = the AiPBX logo). */
+    var brandLogoSource: String
+        get() = prefs.getString(KEY_BRAND_LOGO_SOURCE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_BRAND_LOGO_SOURCE, value).apply()
+
+    /** Server path of the dark-theme logo saved in files/brand_logo_dark.png ("" = none). */
+    var brandLogoDarkSource: String
+        get() = prefs.getString(KEY_BRAND_LOGO_DARK_SOURCE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_BRAND_LOGO_DARK_SOURCE, value).apply()
+
+    /** "square" or "wide" (the whole logo, wider than tall). */
+    var brandLogoStyle: String
+        get() = prefs.getString(KEY_BRAND_LOGO_STYLE, "square") ?: "square"
+        set(value) = prefs.edit().putString(KEY_BRAND_LOGO_STYLE, value).apply()
+
+    /** The company colour as #RRGGBB, "" = the app's own. */
+    var brandColor: String
+        get() = prefs.getString(KEY_BRAND_COLOR, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_BRAND_COLOR, value).apply()
+
     /** App language code (see L10n); English unless the user picks another. Kept on logout. */
     var appLanguage: String
         get() = prefs.getString(KEY_APP_LANGUAGE, null)
@@ -451,6 +471,10 @@ class AppPreferences(context: Context) : SessionRefreshStore {
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_BRAND_TITLE = "brand_title"
         private const val KEY_BRAND_SUB = "brand_sub"
+        private const val KEY_BRAND_LOGO_SOURCE = "brand_logo_source"
+        private const val KEY_BRAND_LOGO_DARK_SOURCE = "brand_logo_dark_source"
+        private const val KEY_BRAND_LOGO_STYLE = "brand_logo_style"
+        private const val KEY_BRAND_COLOR = "brand_color"
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_USERNAME = "username"
         private const val KEY_FULL_NAME = "full_name"

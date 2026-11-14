@@ -11,7 +11,13 @@ data class ServerInfo(
     @SerializedName("site_title") val siteTitle: String?,
     @SerializedName("brand_title") val brandTitle: String?,
     @SerializedName("brand_sub") val brandSub: String?,
-    @SerializedName("server_time") val serverTime: Long?
+    @SerializedName("server_time") val serverTime: Long?,
+    // The company's own look (absent on older servers): paths on the server.
+    @SerializedName("logo_url") val logoUrl: String? = null,
+    @SerializedName("logo_url_dark") val logoUrlDark: String? = null,
+    @SerializedName("logo_style") val logoStyle: String? = null,
+    @SerializedName("favicon_url") val faviconUrl: String? = null,
+    @SerializedName("brand_color") val brandColor: String? = null
 )
 
 data class PushConfig(

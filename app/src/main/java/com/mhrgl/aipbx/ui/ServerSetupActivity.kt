@@ -113,6 +113,7 @@ class ServerSetupActivity : BaseActivity() {
                 info.brandTitle?.ifEmpty { null }?.let { prefs.brandTitle = it }
                     ?: info.siteTitle?.ifEmpty { null }?.let { prefs.brandTitle = it }
                 info.brandSub?.ifEmpty { null }?.let { prefs.brandSubtitle = it }
+                BrandLook.update(this@ServerSetupActivity, prefs, apiClient, info)
 
                 // Navigate to Login screen
                 val intent = Intent(this@ServerSetupActivity, LoginActivity::class.java)

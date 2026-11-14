@@ -60,6 +60,15 @@ class LoginActivity : BaseActivity() {
         binding.tvCurrentServer.text = prefs.serverUrl
         binding.tvBrandTitle.text = prefs.brandTitle
         binding.tvBrandSubtitle.text = prefs.brandSubtitle.ifEmpty { getString(R.string.default_brand_sub) }
+        showBrand()
+        // The company may have changed its logo since this server was set up.
+        prefs.serverUrl.takeIf { it.isNotBlank() }?.let { url ->
+            lifecycleScope.launch {
+                apiClient.ping(url).onSuccess { info ->
+                    if (BrandLook.update(this@LoginActivity, prefs, apiClient, info)) showBrand()
+                }
+            }
+        }
 
         val pInfo = try {
             packageManager.getPackageInfo(packageName, 0)
@@ -335,5 +344,10 @@ class LoginActivity : BaseActivity() {
     private fun showError(msg: String) {
         binding.tvError.text = msg
         binding.tvError.visibility = View.VISIBLE
+    }
+
+    private fun showBrand() {
+        BrandLook.applyLogo(binding.ivLoginLogo, prefs)
+        BrandLook.applyColor(prefs, binding.tvBrandTitle, binding.btnLogin)
     }
 }

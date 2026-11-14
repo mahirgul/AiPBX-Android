@@ -395,6 +395,16 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         val name = prefs.fullName ?: (prefs.username ?: "")
         // Number and name only ("19000 (Mahir)"): the "Extension:" label took room without telling anything.
         binding.tvUserExt.text = if (name.isNotBlank() && name != ext) "$ext ($name)" else ext
+        BrandLook.applyLogo(binding.ivHeaderLogo, prefs)
+        prefs.serverUrl.takeIf { it.isNotBlank() }?.let { url ->
+            lifecycleScope.launch {
+                apiClient.ping(url).onSuccess { info ->
+                    if (BrandLook.update(this@DialerActivity, prefs, apiClient, info)) {
+                        BrandLook.applyLogo(binding.ivHeaderLogo, prefs)
+                    }
+                }
+            }
+        }
 
         binding.btnVoicemail.setOnClickListener { VoicemailActivity.start(this) }
 

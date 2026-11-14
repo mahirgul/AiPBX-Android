@@ -78,6 +78,31 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
         }
     }
 
+    /** A small public file of the server (the brand logo); null when missing or larger than [maxBytes]. */
+    suspend fun download(url: String, maxBytes: Int = 2 * 1024 * 1024): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            rawClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
+                val body = response.body ?: return@use null
+                if (!response.isSuccessful || body.contentLength() > maxBytes) return@use null
+                val bytes = body.byteStream().readNBytesCompat(maxBytes + 1)
+                if (bytes.size > maxBytes) null else bytes
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(16 * 1024)
+        while (out.size() < limit) {
+            val n = read(buf, 0, minOf(buf.size, limit - out.size()))
+            if (n < 0) break
+            out.write(buf, 0, n)
+        }
+        return out.toByteArray()
+    }
+
     suspend fun login(baseUrl: String, userOrExt: String, pass: String, otp: String? = null): Result<LoginResponse> =
         withContext(Dispatchers.IO) {
             try {

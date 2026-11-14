@@ -66,6 +66,7 @@
         app:layout_constraintTop_toBottomOf="@id/serverInfoLayout">
 
         <ImageView
+            android:id="@+id/ivLoginLogo"
             android:layout_width="84dp"
             android:layout_height="84dp"
             android:contentDescription="@string/app_name"
