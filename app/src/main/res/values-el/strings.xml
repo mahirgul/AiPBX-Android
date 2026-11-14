@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Δεν ήταν δυνατή η διαγραφή της ομάδας (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Διατήρηση προθέματος \'+\'</string>
     <string name="pref_send_plus_desc">Αποστολή του διεθνούς \'+\' απευθείας στο PBX για εξομάλυνση (ΕΝΕΡΓΟ) ή μετατροπή σε 00 (ΑΝΕΝΕΡΓΟ)</string>
+    <string name="chat_call_audio">Ομαδική φωνητική κλήση</string>
+    <string name="chat_call_video">Ομαδική βιντεοκλήση</string>
+    <string name="chat_call_join">Συμμετοχή</string>
+    <string name="chat_call_banner_audio">Φωνητική κλήση σε εξέλιξη</string>
+    <string name="chat_call_banner_video">Βιντεοκλήση σε εξέλιξη</string>
+    <string name="chat_call_started_audio">Ο/Η %1$s ξεκίνησε μια φωνητική κλήση</string>
+    <string name="chat_call_started_video">Ο/Η %1$s ξεκίνησε μια βιντεοκλήση</string>
+    <string name="chat_call_ended_summary">Η κλήση έληξε · %1$s · %2$d συμμετέχοντες</string>
+    <string name="chat_call_ended">Η κλήση έληξε</string>
+    <string name="chat_call_failed">Αδυναμία έναρξης ή συμμετοχής στην κλήση: %1$s</string>
 </resources>

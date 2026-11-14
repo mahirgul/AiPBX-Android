@@ -48,11 +48,13 @@ import com.mhrgl.aipbx.databinding.DialogGroupInfoBinding
 import com.mhrgl.aipbx.databinding.DialogNewGroupBinding
 import com.mhrgl.aipbx.engine.SipEngineListener
 import com.mhrgl.aipbx.model.CallStatus
+import com.mhrgl.aipbx.model.ChatCallMeta
 import com.mhrgl.aipbx.model.ChatConversation
 import com.mhrgl.aipbx.model.ChatMessage
 import com.mhrgl.aipbx.model.ChatUploadResponse
 import com.mhrgl.aipbx.model.ConnectionStatus
 import com.mhrgl.aipbx.model.ContactItem
+import com.mhrgl.aipbx.model.parseChatCallMeta
 import com.mhrgl.aipbx.service.PbxForegroundService
 import com.mhrgl.aipbx.util.SamsungPowerManagerHelper
 import com.mhrgl.aipbx.util.SearchUtils
@@ -85,6 +87,9 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     private var currentChatIsGroup: Boolean = false
     private var currentChatGroupDetails: ChatConversation? = null
     private var chatPendingUpload: ChatUploadResponse? = null
+    private var activeGroupCall: ChatCallMeta? = null
+    private val endedGroupCallIds = mutableSetOf<Long>()
+    private var isStartingOrJoiningChatCall: Boolean = false
 
     private val pickChatDocumentLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) handleChatPickedUri(uri, "file")
@@ -250,10 +255,22 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         val targetName = intent.getStringExtra(ChatKeys.EXTRA_TARGET_NAME)
         val isGroup = intent.getBooleanExtra(ChatKeys.EXTRA_IS_GROUP, false)
         val dialNum = intent.getStringExtra("extra_dial_number")
+        val notifCallId = intent.getLongExtra("call_id", 0L).let {
+            if (it > 0L) it else intent.getStringExtra("call_id")?.toLongOrNull() ?: 0L
+        }
+        val notifCallVideo = intent.getBooleanExtra("call_video", false) ||
+            intent.getStringExtra("call_video") == "1"
 
         if (convId > 0 || targetExt.isNotEmpty()) {
             switchTab(Tab.CHAT)
             openChatRoom(convId, targetExt, targetName, isGroup)
+            if (isGroup && notifCallId > 0L) {
+                activeGroupCall = ChatCallMeta(callId = notifCallId, video = notifCallVideo)
+                updateChatActiveCallBanner()
+                if (::chatMessageAdapter.isInitialized) {
+                    chatMessageAdapter.setGroupCallState(notifCallId, endedGroupCallIds)
+                }
+            }
         } else if (!dialNum.isNullOrEmpty()) {
             switchTab(Tab.DIALER)
             setDialNumber(dialNum)
@@ -611,35 +628,25 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
     /** A video call waiting for the camera permission. */
     private var pendingVideoCall: Pair<String, String?>? = null
+    private var pendingVideoIsChatCall: Boolean = false
 
     // Camera refused: the call goes out with audio only.
     private val cameraPermissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { granted ->
         val call = pendingVideoCall ?: return@registerForActivityResult
+        val isChatCall = pendingVideoIsChatCall
         pendingVideoCall = null
+        pendingVideoIsChatCall = false
         if (!granted) Toast.makeText(this, getString(R.string.err_camera_permission_video), Toast.LENGTH_LONG).show()
-        initiateCall(call.first, call.second, withVideo = granted)
+        if (isChatCall) {
+            initiateChatCall(call.first, call.second ?: "", withVideo = granted)
+        } else {
+            initiateCall(call.first, call.second, withVideo = granted)
+        }
     }
 
     private fun initiateCall(targetNumber: String, displayName: String? = null, withVideo: Boolean = false) {
-        if (withVideo && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            pendingVideoCall = targetNumber to displayName
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            return
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, getString(R.string.err_mic_permission_call), Toast.LENGTH_LONG).show()
-            requestPermissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
-            return
-        }
-
-        val service = pbxService
-        if (service == null || service.engine.currentConnectionStatus != ConnectionStatus.CONNECTED) {
-            Toast.makeText(this, getString(R.string.err_not_connected), Toast.LENGTH_SHORT).show()
-            return
-        }
-
         var cleanNumber = targetNumber.replace(Regex("[^0-9*#+]"), "")
         if (cleanNumber.startsWith("+") && !prefs.sendPlusPrefix) {
             cleanNumber = "00" + cleanNumber.substring(1)
@@ -650,13 +657,47 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             return
         }
 
+        if (!launchSipCall(cleanNumber, displayName, withVideo, isChatCall = false)) return
         setDialNumber(cleanNumber)
+    }
+
+    private fun initiateChatCall(dialTarget: String, displayName: String, withVideo: Boolean) {
+        if (dialTarget.isBlank()) {
+            Toast.makeText(this, getString(R.string.err_enter_valid_number), Toast.LENGTH_SHORT).show()
+            return
+        }
+        launchSipCall(dialTarget, displayName.ifBlank { dialTarget }, withVideo, isChatCall = true)
+    }
+
+    private fun launchSipCall(
+        dialTarget: String,
+        displayName: String?,
+        withVideo: Boolean,
+        isChatCall: Boolean
+    ): Boolean {
+        if (withVideo && ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            pendingVideoCall = dialTarget to displayName
+            pendingVideoIsChatCall = isChatCall
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            return false
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, getString(R.string.err_mic_permission_call), Toast.LENGTH_LONG).show()
+            requestPermissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+            return false
+        }
+
+        val service = pbxService
+        if (service == null || service.engine.currentConnectionStatus != ConnectionStatus.CONNECTED) {
+            Toast.makeText(this, getString(R.string.err_not_connected), Toast.LENGTH_SHORT).show()
+            return false
+        }
 
         val domain = prefs.domain?.ifEmpty { null } ?: try {
             android.net.Uri.parse(prefs.serverUrl).host?.ifEmpty { null } ?: ""
         } catch (e: Exception) { "" }
         service.engine.makeCall(
-            targetNumber = cleanNumber,
+            targetNumber = dialTarget,
             domain = domain,
             turnUrl = prefs.turnUrl,
             turnUser = prefs.turnUsername,
@@ -667,6 +708,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
         val callIntent = Intent(this, CallActivity::class.java)
         startActivity(callIntent)
+        return true
     }
 
     // ================= TAB 2: CALL HISTORY =================
@@ -1031,7 +1073,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         chatMessageAdapter = ChatMessageAdapter(
             myExt, baseUrl, false,
             tokenProvider = { prefs.token },
-            onOwnMessageLongPress = { msg -> confirmDeleteChatMessage(msg) }
+            onOwnMessageLongPress = { msg -> confirmDeleteChatMessage(msg) },
+            onJoinCallClick = { callId, _ -> startOrJoinGroupChatCall(callId = callId) }
         )
         val msgLm = LinearLayoutManager(this).apply {
             stackFromEnd = true
@@ -1085,10 +1128,23 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         }
 
         binding.btnChatRoomCall.setOnClickListener {
-            if (currentChatTargetExt.isNotEmpty()) {
+            if (currentChatIsGroup) {
+                startOrJoinGroupChatCall(conversationId = currentChatConvId, video = false)
+            } else if (currentChatTargetExt.isNotEmpty()) {
                 switchTab(Tab.DIALER)
                 initiateCall(currentChatTargetExt, currentChatTargetName)
             }
+        }
+
+        binding.btnChatRoomVideoCall.setOnClickListener {
+            if (currentChatIsGroup) {
+                startOrJoinGroupChatCall(conversationId = currentChatConvId, video = true)
+            }
+        }
+
+        binding.btnChatBannerJoin.setOnClickListener {
+            val active = activeGroupCall ?: return@setOnClickListener
+            startOrJoinGroupChatCall(callId = active.callId)
         }
 
         binding.btnChatRoomGroupInfo.setOnClickListener {
@@ -1449,7 +1505,11 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         binding.bottomNav.visibility = View.GONE
 
         chatMessageAdapter.setIsGroup(isGroup)
+        chatMessageAdapter.setGroupCallState(null, emptySet())
         chatMessageAdapter.submitList(emptyList())
+        activeGroupCall = null
+        endedGroupCallIds.clear()
+        updateChatActiveCallBanner()
         binding.etChatMessage.setText("")
         chatPendingUpload = null
         binding.llChatUploadPreview.visibility = View.GONE
@@ -1469,6 +1529,9 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         currentChatTargetName = ""
         currentChatIsGroup = false
         currentChatGroupDetails = null
+        activeGroupCall = null
+        endedGroupCallIds.clear()
+        updateChatActiveCallBanner()
         ChatKeys.activeConversationId = 0
 
         loadConversations()
@@ -1477,7 +1540,14 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
 
     private fun updateChatRoomHeader() {
         if (currentChatIsGroup) {
-            binding.btnChatRoomCall.visibility = View.GONE
+            if (prefs.chatCallsEnabled) {
+                binding.btnChatRoomCall.visibility = View.VISIBLE
+                binding.btnChatRoomCall.contentDescription = getString(R.string.chat_call_audio)
+                binding.btnChatRoomVideoCall.visibility = if (prefs.videoLimits != null) View.VISIBLE else View.GONE
+            } else {
+                binding.btnChatRoomCall.visibility = View.GONE
+                binding.btnChatRoomVideoCall.visibility = View.GONE
+            }
             binding.btnChatRoomGroupInfo.visibility = View.VISIBLE
             binding.vChatRoomOnlineDot.visibility = View.GONE
             binding.tvChatRoomAvatar.text = "👥"
@@ -1491,6 +1561,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             }
         } else {
             binding.btnChatRoomCall.visibility = View.VISIBLE
+            binding.btnChatRoomCall.contentDescription = getString(R.string.ui_call)
+            binding.btnChatRoomVideoCall.visibility = View.GONE
             binding.btnChatRoomGroupInfo.visibility = View.GONE
             binding.vChatRoomOnlineDot.visibility = View.VISIBLE
             binding.tvChatRoomAvatar.text = currentChatTargetName.take(1).uppercase()
@@ -1553,12 +1625,143 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
             val res = apiClient.getChatMessages(sUrl, token, convId, 50)
             res.onSuccess { list ->
                 if (currentChatConvId == convId && isChatRoomOpen()) {
+                    refreshGroupCallStateFromMessages(list)
                     chatMessageAdapter.submitList(list)
                     binding.rvChatMessages.scrollToPosition((list.size - 1).coerceAtLeast(0))
                     ChatWebSocketManager.instance.sendMarkRead(convId, list.lastOrNull()?.id ?: 0L)
                 }
             }
         }
+    }
+
+    private fun refreshGroupCallStateFromMessages(list: List<ChatMessage>) {
+        if (!currentChatIsGroup) {
+            activeGroupCall = null
+            endedGroupCallIds.clear()
+            chatMessageAdapter.setGroupCallState(null, emptySet())
+            updateChatActiveCallBanner()
+            return
+        }
+        var openCall: ChatCallMeta? = null
+        val ended = mutableSetOf<Long>()
+        for (m in list) {
+            when (m.systemEvent) {
+                "call_started" -> {
+                    val meta = parseChatCallMeta(m.systemMeta) ?: continue
+                    openCall = meta
+                    ended.remove(meta.callId)
+                }
+                "call_ended" -> {
+                    val meta = parseChatCallMeta(m.systemMeta) ?: continue
+                    ended.add(meta.callId)
+                    if (openCall?.callId == meta.callId) {
+                        openCall = null
+                    }
+                }
+            }
+        }
+        // Keep seeded notification call if messages didn't explicitly end it
+        val seeded = activeGroupCall
+        if (openCall == null && seeded != null && !ended.contains(seeded.callId)) {
+            openCall = seeded
+        }
+        activeGroupCall = openCall
+        endedGroupCallIds.clear()
+        endedGroupCallIds.addAll(ended)
+        chatMessageAdapter.setGroupCallState(openCall?.callId, endedGroupCallIds)
+        updateChatActiveCallBanner()
+    }
+
+    private fun updateChatActiveCallBanner() {
+        val active = activeGroupCall
+        val show = isChatRoomOpen() && currentChatIsGroup && prefs.chatCallsEnabled &&
+            active != null && !endedGroupCallIds.contains(active.callId)
+        if (show && active != null) {
+            binding.bannerChatActiveCall.visibility = View.VISIBLE
+            binding.ivChatBannerIcon.setImageResource(
+                if (active.video) R.drawable.ic_videocam else R.drawable.ic_phone
+            )
+            binding.tvChatBannerText.text = getString(
+                if (active.video) R.string.chat_call_banner_video else R.string.chat_call_banner_audio
+            )
+        } else {
+            binding.bannerChatActiveCall.visibility = View.GONE
+        }
+    }
+
+    private fun startOrJoinGroupChatCall(
+        conversationId: Int? = null,
+        video: Boolean = false,
+        callId: Long? = null
+    ) {
+        if (isStartingOrJoiningChatCall) return
+        val sUrl = prefs.serverUrl ?: return
+        val token = prefs.token ?: return
+        if (callId == null && (conversationId == null || conversationId <= 0)) return
+
+        isStartingOrJoiningChatCall = true
+        lifecycleScope.launch {
+            try {
+                val res = apiClient.startOrJoinChatCall(
+                    baseUrl = sUrl,
+                    token = token,
+                    conversationId = conversationId,
+                    video = video,
+                    callId = callId
+                )
+                res.onSuccess { payload ->
+                    val call = payload.call
+                    if (payload.success && call != null) {
+                        if (isChatRoomOpen() && currentChatIsGroup && currentChatConvId == call.conversationId) {
+                            val meta = ChatCallMeta(
+                                callId = call.id,
+                                video = call.video,
+                                actor = call.startedBy
+                            )
+                            endedGroupCallIds.remove(call.id)
+                            activeGroupCall = meta
+                            if (::chatMessageAdapter.isInitialized) {
+                                chatMessageAdapter.setGroupCallState(call.id, endedGroupCallIds)
+                            }
+                            updateChatActiveCallBanner()
+                            val title = currentChatTitleForCall()
+                            initiateChatCall(call.dial, title, call.video)
+                        }
+                    } else {
+                        val errMsg = payload.error ?: ""
+                        Toast.makeText(
+                            this@DialerActivity,
+                            getString(R.string.chat_call_failed, errMsg),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }.onFailure { err ->
+                    val msg = err.message ?: ""
+                    if (callId != null && msg.contains("ended", ignoreCase = true)) {
+                        endedGroupCallIds.add(callId)
+                        if (activeGroupCall?.callId == callId) {
+                            activeGroupCall = null
+                        }
+                        if (::chatMessageAdapter.isInitialized) {
+                            chatMessageAdapter.setGroupCallState(activeGroupCall?.callId, endedGroupCallIds)
+                        }
+                        updateChatActiveCallBanner()
+                    }
+                    Toast.makeText(
+                        this@DialerActivity,
+                        getString(R.string.chat_call_failed, msg),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } finally {
+                isStartingOrJoiningChatCall = false
+            }
+        }
+    }
+
+    private fun currentChatTitleForCall(): String {
+        val groupTitle = currentChatGroupDetails?.title?.takeIf { it.isNotBlank() }
+        return groupTitle ?: currentChatTargetName.ifBlank { getString(R.string.group_chat) }
     }
 
     private fun loadChatRoomGroupDetails() {
@@ -2156,7 +2359,12 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
                     val p = (v.resolution ?: "1280x720").split("x").mapNotNull { it.toIntOrNull() }
                     if (p.size == 2) com.mhrgl.aipbx.engine.VideoLimits(p[0], p[1], v.fps ?: 24) else null
                 }
+                prefs.chatCallsEnabled = f.chatCalls
                 applyVideoEnabled()
+                if (isChatRoomOpen()) {
+                    updateChatRoomHeader()
+                    updateChatActiveCallBanner()
+                }
 
                 binding.switchDnd.isChecked = isDndEnabled
                 binding.etForwardAlways.setText(currentForwardAlways)
@@ -2315,6 +2523,26 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     override fun onNewMessage(message: ChatMessage) {
         runOnUiThread {
             if (isChatRoomOpen() && message.conversationId == currentChatConvId) {
+                when (message.systemEvent) {
+                    "call_started" -> {
+                        parseChatCallMeta(message.systemMeta)?.let { meta ->
+                            endedGroupCallIds.remove(meta.callId)
+                            activeGroupCall = meta
+                            chatMessageAdapter.setGroupCallState(meta.callId, endedGroupCallIds)
+                            updateChatActiveCallBanner()
+                        }
+                    }
+                    "call_ended" -> {
+                        parseChatCallMeta(message.systemMeta)?.let { meta ->
+                            endedGroupCallIds.add(meta.callId)
+                            if (activeGroupCall?.callId == meta.callId) {
+                                activeGroupCall = null
+                            }
+                            chatMessageAdapter.setGroupCallState(activeGroupCall?.callId, endedGroupCallIds)
+                            updateChatActiveCallBanner()
+                        }
+                    }
+                }
                 chatMessageAdapter.addMessage(message)
                 binding.rvChatMessages.scrollToPosition(chatMessageAdapter.itemCount - 1)
                 ChatWebSocketManager.instance.sendMarkRead(currentChatConvId, message.id)

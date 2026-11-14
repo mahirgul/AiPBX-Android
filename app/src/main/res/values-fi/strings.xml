@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Ryhmää ei voitu poistaa (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Säilytä \'+\' etuliite</string>
     <string name="pref_send_plus_desc">Lähetä kansainvälinen \'+\' suoraan PBX-palvelimelle normalisointia varten (PÄÄLLÄ) tai muunna 00:ksi (POIS)</string>
+    <string name="chat_call_audio">Ryhmä-äänipuhelu</string>
+    <string name="chat_call_video">Ryhmävideopuhelu</string>
+    <string name="chat_call_join">Liity</string>
+    <string name="chat_call_banner_audio">Äänipuhelu käynnissä</string>
+    <string name="chat_call_banner_video">Videopuhelu käynnissä</string>
+    <string name="chat_call_started_audio">%1$s aloitti äänipuhelun</string>
+    <string name="chat_call_started_video">%1$s aloitti videopuhelun</string>
+    <string name="chat_call_ended_summary">Puhelu päättyi · %1$s · %2$d osallistujaa</string>
+    <string name="chat_call_ended">Puhelu päättyi</string>
+    <string name="chat_call_failed">Puhelua ei voitu aloittaa tai siihen ei voitu liittyä: %1$s</string>
 </resources>

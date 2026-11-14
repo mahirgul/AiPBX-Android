@@ -863,6 +863,18 @@
                         android:visibility="gone" />
 
                     <ImageButton
+                        android:id="@+id/btnChatRoomVideoCall"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/chat_call_video"
+                        android:padding="8dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/ic_videocam"
+                        android:visibility="gone"
+                        app:tint="@color/primary" />
+
+                    <ImageButton
                         android:id="@+id/btnChatRoomCall"
                         android:layout_width="38dp"
                         android:layout_height="38dp"
@@ -872,6 +884,57 @@
                         android:scaleType="fitCenter"
                         android:src="@drawable/ic_phone"
                         app:tint="@color/primary" />
+                </LinearLayout>
+
+                <!-- Active Group Call Banner -->
+                <LinearLayout
+                    android:id="@+id/bannerChatActiveCall"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/chat_call_banner_bg"
+                    android:elevation="1dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="8dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/ivChatBannerIcon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_phone"
+                        app:tint="#059669" />
+
+                    <TextView
+                        android:id="@+id/tvChatBannerText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="@string/chat_call_banner_audio"
+                        android:textColor="@color/chat_call_banner_text"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnChatBannerJoin"
+                        android:layout_width="wrap_content"
+                        android:layout_height="34dp"
+                        android:layout_marginStart="8dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="14dp"
+                        android:text="@string/chat_call_join"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        app:backgroundTint="#059669"
+                        app:cornerRadius="17dp" />
                 </LinearLayout>
 
                 <!-- Messages RecyclerView -->

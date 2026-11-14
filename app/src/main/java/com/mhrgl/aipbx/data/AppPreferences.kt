@@ -141,6 +141,11 @@ class AppPreferences(context: Context) : SessionRefreshStore {
             }
         }.apply()
 
+    /** Group chat audio/video calls enabled for this user (features.php). */
+    var chatCallsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CHAT_CALLS_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_CHAT_CALLS_ENABLED, value).apply()
+
     val isLoggedIn: Boolean
         get() = !token.isNullOrEmpty() && !extension.isNullOrEmpty() && !sipPassword.isNullOrEmpty()
 
@@ -474,6 +479,7 @@ class AppPreferences(context: Context) : SessionRefreshStore {
         private const val KEY_LAST_TOKEN_REFRESH_TIME = "last_token_refresh_time"
         private const val KEY_VIDEO_RES = "video_resolution"
         private const val KEY_VIDEO_FPS = "video_fps"
+        private const val KEY_CHAT_CALLS_ENABLED = "chat_calls_enabled"
         private const val KEY_SEND_PLUS_PREFIX = "send_plus_prefix"
 
         private const val OLD_PREFS_NAME = "ai_pbx_prefs"

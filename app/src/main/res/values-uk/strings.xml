@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Не вдалося видалити групу (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Зберігати префікс \'+\'</string>
     <string name="pref_send_plus_desc">Надсилати міжнародний префікс \'+\' на АТС для нормалізації (УВІМК) або перетворювати на 00 (ВИМК)</string>
+    <string name="chat_call_audio">Груповий голосовий виклик</string>
+    <string name="chat_call_video">Груповий відеовиклик</string>
+    <string name="chat_call_join">Приєднатися</string>
+    <string name="chat_call_banner_audio">Триває голосовий виклик</string>
+    <string name="chat_call_banner_video">Триває відеовиклик</string>
+    <string name="chat_call_started_audio">%1$s розпочав(ла) голосовий виклик</string>
+    <string name="chat_call_started_video">%1$s розпочав(ла) відеовиклик</string>
+    <string name="chat_call_ended_summary">Виклик завершено · %1$s · %2$d учасн.</string>
+    <string name="chat_call_ended">Виклик завершено</string>
+    <string name="chat_call_failed">Не вдалося розпочати виклик або приєднатися: %1$s</string>
 </resources>

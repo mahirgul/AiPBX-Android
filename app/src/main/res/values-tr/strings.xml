@@ -424,4 +424,14 @@
     <string name="contacts_extensions_listed">dahili listelendi</string>
     <string name="api_fcm_token_failed">FCM Token gönderilemedi (HTTP %1$s)</string>
     <string name="api_group_delete_failed">Grup silinemedi (HTTP %1$s)</string>
+    <string name="chat_call_audio">Grup sesli arama</string>
+    <string name="chat_call_video">Grup görüntülü arama</string>
+    <string name="chat_call_join">Katıl</string>
+    <string name="chat_call_banner_audio">Sesli arama devam ediyor</string>
+    <string name="chat_call_banner_video">Görüntülü arama devam ediyor</string>
+    <string name="chat_call_started_audio">%1$s sesli arama başlattı</string>
+    <string name="chat_call_started_video">%1$s görüntülü arama başlattı</string>
+    <string name="chat_call_ended_summary">Arama bitti · %1$s · %2$d katılımcı</string>
+    <string name="chat_call_ended">Arama bitti</string>
+    <string name="chat_call_failed">Arama başlatılamadı veya katılınamadı: %1$s</string>
 </resources>

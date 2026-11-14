@@ -426,4 +426,14 @@
     <string name="err_camera_permission_video">No camera permission: the call continues with audio only.</string>
     <string name="err_camera_unavailable">Camera not available: the call continues with audio only.</string>
     <string name="contacts_extensions_listed">extensions listed</string>
+    <string name="chat_call_audio">Group voice call</string>
+    <string name="chat_call_video">Group video call</string>
+    <string name="chat_call_join">Join</string>
+    <string name="chat_call_banner_audio">Voice call in progress</string>
+    <string name="chat_call_banner_video">Video call in progress</string>
+    <string name="chat_call_started_audio">%1$s started a voice call</string>
+    <string name="chat_call_started_video">%1$s started a video call</string>
+    <string name="chat_call_ended_summary">Call ended · %1$s · %2$d participants</string>
+    <string name="chat_call_ended">Call ended</string>
+    <string name="chat_call_failed">Could not start or join call: %1$s</string>
 </resources>

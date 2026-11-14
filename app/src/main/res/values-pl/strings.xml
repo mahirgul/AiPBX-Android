@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Nie udało się usunąć grupy (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Zachowaj prefiks \'+\'</string>
     <string name="pref_send_plus_desc">Wysyłaj międzynarodowy prefiks \'+\' bezpośrednio do centrali PBX w celu normalizacji (WŁ.) lub konwertuj na 00 (WYŁ.)</string>
+    <string name="chat_call_audio">Grupowa rozmowa głosowa</string>
+    <string name="chat_call_video">Grupowa rozmowa wideo</string>
+    <string name="chat_call_join">Dołącz</string>
+    <string name="chat_call_banner_audio">Trwa rozmowa głosowa</string>
+    <string name="chat_call_banner_video">Trwa rozmowa wideo</string>
+    <string name="chat_call_started_audio">%1$s rozpoczął(ęła) rozmowę głosową</string>
+    <string name="chat_call_started_video">%1$s rozpoczął(ęła) rozmowę wideo</string>
+    <string name="chat_call_ended_summary">Rozmowa zakończona · %1$s · %2$d uczestników</string>
+    <string name="chat_call_ended">Rozmowa zakończona</string>
+    <string name="chat_call_failed">Nie udało się rozpocząć rozmowy ani do niej dołączyć: %1$s</string>
 </resources>

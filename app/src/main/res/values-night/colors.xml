@@ -25,4 +25,6 @@
     <color name="dialpad_btn_pressed">#334155</color>
     <color name="dialpad_digit">#F8FAFC</color>
     <color name="dialpad_letters">#94A3B8</color>
+    <color name="chat_call_banner_bg">#064E3B</color>
+    <color name="chat_call_banner_text">#A7F3D0</color>
 </resources>

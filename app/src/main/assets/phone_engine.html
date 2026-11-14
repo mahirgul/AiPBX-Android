@@ -492,7 +492,8 @@
                     cleanupMedia();
                 }
 
-                var cleanTarget = (target || "").replace(/[^0-9*#+]/g, '');
+                var rawTarget = (target || "").trim();
+                var cleanTarget = /^cc[0-9]+$/.test(rawTarget) ? rawTarget : rawTarget.replace(/[^0-9*#+]/g, '');
                 if (!cleanTarget) {
                     log("makeCall error: Target is empty");
                     if (window.AndroidBridge) window.AndroidBridge.onCallEnded("INVALID NUMBER");

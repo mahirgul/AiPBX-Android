@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Não foi possível eliminar o grupo (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Manter prefixo \'+\'</string>
     <string name="pref_send_plus_desc">Enviar \'+\' internacional diretamente para o PBX para normalização (ATIVADO) ou converter para 00 (DESATIVADO)</string>
+    <string name="chat_call_audio">Chamada de voz em grupo</string>
+    <string name="chat_call_video">Videochamada em grupo</string>
+    <string name="chat_call_join">Entrar</string>
+    <string name="chat_call_banner_audio">Chamada de voz em curso</string>
+    <string name="chat_call_banner_video">Videochamada em curso</string>
+    <string name="chat_call_started_audio">%1$s iniciou uma chamada de voz</string>
+    <string name="chat_call_started_video">%1$s iniciou uma videochamada</string>
+    <string name="chat_call_ended_summary">Chamada terminada · %1$s · %2$d participantes</string>
+    <string name="chat_call_ended">Chamada terminada</string>
+    <string name="chat_call_failed">Não foi possível iniciar ou entrar na chamada: %1$s</string>
 </resources>

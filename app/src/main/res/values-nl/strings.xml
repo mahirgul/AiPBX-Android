@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Kon de groep niet verwijderen (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Internationaal \'+\' behouden</string>
     <string name="pref_send_plus_desc">Stuur internationaal \'+\' rechtstreeks naar PBX voor normalisatie (AAN) of converteer naar 00 (UIT)</string>
+    <string name="chat_call_audio">Groepsspraakoproep</string>
+    <string name="chat_call_video">Groepsvideo-oproep</string>
+    <string name="chat_call_join">Deelnemen</string>
+    <string name="chat_call_banner_audio">Spraakoproep bezig</string>
+    <string name="chat_call_banner_video">Video-oproep bezig</string>
+    <string name="chat_call_started_audio">%1$s heeft een spraakoproep gestart</string>
+    <string name="chat_call_started_video">%1$s heeft een video-oproep gestart</string>
+    <string name="chat_call_ended_summary">Oproep beëindigd · %1$s · %2$d deelnemers</string>
+    <string name="chat_call_ended">Oproep beëindigd</string>
+    <string name="chat_call_failed">Kan oproep niet starten of eraan deelnemen: %1$s</string>
 </resources>

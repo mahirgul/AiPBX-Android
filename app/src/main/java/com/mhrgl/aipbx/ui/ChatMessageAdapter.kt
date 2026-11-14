@@ -12,9 +12,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.mhrgl.aipbx.R
 import com.mhrgl.aipbx.data.SimpleImageLoader
 import com.mhrgl.aipbx.model.ChatMessage
+import com.mhrgl.aipbx.model.parseChatCallMeta
 import com.mhrgl.aipbx.util.MediaUrls
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +26,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 class ChatMessageAdapter(
     private val myExtension: String,
@@ -32,10 +35,14 @@ class ChatMessageAdapter(
     /** The current session token — for downloading/opening media (a provider, since the token can be refreshed). */
     private val tokenProvider: () -> String? = { null },
     /** Long press on one of your own messages (offers to delete it). */
-    private val onOwnMessageLongPress: ((ChatMessage) -> Unit)? = null
+    private val onOwnMessageLongPress: ((ChatMessage) -> Unit)? = null,
+    /** Tap "Join" on an active group call system message. */
+    private val onJoinCallClick: ((callId: Long, video: Boolean) -> Unit)? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val messages = mutableListOf<ChatMessage>()
+    private var activeCallId: Long? = null
+    private val endedCallIds = mutableSetOf<Long>()
 
     companion object {
         private const val TYPE_ME = 1
@@ -45,6 +52,13 @@ class ChatMessageAdapter(
 
     fun setIsGroup(group: Boolean) {
         this.isGroup = group
+        notifyDataSetChanged()
+    }
+
+    fun setGroupCallState(activeId: Long?, endedIds: Set<Long>) {
+        activeCallId = activeId
+        endedCallIds.clear()
+        endedCallIds.addAll(endedIds)
         notifyDataSetChanged()
     }
 
@@ -135,9 +149,52 @@ class ChatMessageAdapter(
 
     inner class SystemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvSystemMessage: TextView = itemView.findViewById(R.id.tvSystemMessage)
+        private val btnSystemJoinCall: MaterialButton = itemView.findViewById(R.id.btnSystemJoinCall)
 
         fun bind(m: ChatMessage) {
-            tvSystemMessage.text = m.message ?: ""
+            val ctx = itemView.context
+            when (m.systemEvent) {
+                "call_started" -> {
+                    val meta = parseChatCallMeta(m.systemMeta)
+                    val actorName = m.senderName.ifBlank { meta?.actor.orEmpty() }
+                    tvSystemMessage.text = when {
+                        actorName.isEmpty() -> m.message ?: ""
+                        meta?.video == true -> ctx.getString(R.string.chat_call_started_video, actorName)
+                        else -> ctx.getString(R.string.chat_call_started_audio, actorName)
+                    }
+                    val canJoin = meta != null &&
+                        meta.callId > 0 &&
+                        !endedCallIds.contains(meta.callId) &&
+                        activeCallId == meta.callId
+                    if (canJoin && meta != null) {
+                        btnSystemJoinCall.visibility = View.VISIBLE
+                        btnSystemJoinCall.setOnClickListener {
+                            onJoinCallClick?.invoke(meta.callId, meta.video)
+                        }
+                    } else {
+                        btnSystemJoinCall.visibility = View.GONE
+                        btnSystemJoinCall.setOnClickListener(null)
+                    }
+                }
+                "call_ended" -> {
+                    val meta = parseChatCallMeta(m.systemMeta)
+                    val dur = meta?.duration
+                    val parties = meta?.parties
+                    tvSystemMessage.text = if (dur != null && parties != null && parties > 0) {
+                        val formatted = String.format(Locale.US, "%d:%02d", dur / 60, dur % 60)
+                        ctx.getString(R.string.chat_call_ended_summary, formatted, parties)
+                    } else {
+                        ctx.getString(R.string.chat_call_ended)
+                    }
+                    btnSystemJoinCall.visibility = View.GONE
+                    btnSystemJoinCall.setOnClickListener(null)
+                }
+                else -> {
+                    tvSystemMessage.text = m.message ?: ""
+                    btnSystemJoinCall.visibility = View.GONE
+                    btnSystemJoinCall.setOnClickListener(null)
+                }
+            }
         }
     }
 
@@ -166,8 +223,9 @@ class ChatMessageAdapter(
             }
 
             // Long press on your own message offers to delete it.
-            if (isMe && !m.isDeleted && m.id > 0 && onOwnMessageLongPress != null) {
-                itemView.setOnLongClickListener { onOwnMessageLongPress?.invoke(m); true }
+            val longPressHandler = onOwnMessageLongPress
+            if (isMe && !m.isDeleted && m.id > 0 && longPressHandler != null) {
+                itemView.setOnLongClickListener { longPressHandler.invoke(m); true }
             } else {
                 itemView.setOnLongClickListener(null)
                 itemView.isLongClickable = false

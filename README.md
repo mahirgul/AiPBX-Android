@@ -25,7 +25,9 @@ is optional.
    incoming and outgoing; call or chat from a row.
 3. **Contacts:** the PBX directory with presence (online/offline) and the device's contacts.
 4. **Chat:** direct and group chats over the chat service's WebSocket, photos and files, group
-   management.
+   management, and group voice/video conference calls (`POST /chat/api/conversations/call`,
+   `call_started`/`call_ended` cards, active-call banner, and dialling `cc<room>` with the built-in
+   SIP/WebRTC engine when `features.php` reports `chat_calls: true`).
 5. **PBX:** do-not-disturb, call forwarding, voicemail, the in-app log viewer (`LogViewerActivity`)
    for troubleshooting.
 
@@ -97,6 +99,8 @@ Browser sign-in callbacks (`aipbx://auth`) always show a confirmation before rep
 an app session. Refresh requests are tied to the server, token and sign-in that made the original
 request: a late response cannot overwrite another account or borrow a new account's token.
 Signing out invalidates that session; FCM cleanup uses the credentials captured for that sign-out.
+Chat attachment and media URLs (`util/MediaUrls.kt`) are resolved against the configured PBX base
+URL so the session token is only sent to that PBX.
 
 ## Connection troubleshooting
 

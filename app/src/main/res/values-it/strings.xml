@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Impossibile eliminare il gruppo (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Mantieni il prefisso \'+\'</string>
     <string name="pref_send_plus_desc">Invia il \'+\' internazionale direttamente al PBX per la normalizzazione (ATTIVO) o converti in 00 (NON ATTIVO)</string>
+    <string name="chat_call_audio">Chiamata vocale di gruppo</string>
+    <string name="chat_call_video">Videochiamata di gruppo</string>
+    <string name="chat_call_join">Partecipa</string>
+    <string name="chat_call_banner_audio">Chiamata vocale in corso</string>
+    <string name="chat_call_banner_video">Videochiamata in corso</string>
+    <string name="chat_call_started_audio">%1$s ha avviato una chiamata vocale</string>
+    <string name="chat_call_started_video">%1$s ha avviato una videochiamata</string>
+    <string name="chat_call_ended_summary">Chiamata terminata · %1$s · %2$d partecipanti</string>
+    <string name="chat_call_ended">Chiamata terminata</string>
+    <string name="chat_call_failed">Impossibile avviare o partecipare alla chiamata: %1$s</string>
 </resources>

@@ -30,6 +30,8 @@ object ChatNotifications {
     const val KEY_REPLY = "chat_reply_text"
     const val EXTRA_SENDER_TITLE = "chat_sender_title"
     const val EXTRA_BODY = "chat_body"
+    const val EXTRA_CALL_ID = "call_id"
+    const val EXTRA_CALL_VIDEO = "call_video"
 
     fun notificationId(convId: Int) = 10000 + (convId % 1000)
 
@@ -42,7 +44,10 @@ object ChatNotifications {
         targetName: String?,
         isGroup: Boolean,
         replyText: String? = null,
-        replyError: String? = null
+        replyError: String? = null,
+        allowReply: Boolean = true,
+        callId: Long = 0L,
+        callVideo: Boolean = false
     ) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
 
@@ -52,36 +57,15 @@ object ChatNotifications {
             putExtra(ChatKeys.EXTRA_TARGET_EXT, targetExt)
             putExtra(ChatKeys.EXTRA_TARGET_NAME, targetName)
             putExtra(ChatKeys.EXTRA_IS_GROUP, isGroup)
+            if (callId > 0L) {
+                putExtra(EXTRA_CALL_ID, callId)
+                putExtra(EXTRA_CALL_VIDEO, callVideo)
+            }
         }
         val openPending = PendingIntent.getActivity(
             context, convId, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
-        val replyIntent = Intent(context, ChatReplyReceiver::class.java).apply {
-            putExtra(ChatKeys.EXTRA_CONV_ID, convId)
-            putExtra(ChatKeys.EXTRA_TARGET_EXT, targetExt)
-            putExtra(ChatKeys.EXTRA_TARGET_NAME, targetName)
-            putExtra(ChatKeys.EXTRA_IS_GROUP, isGroup)
-            putExtra(EXTRA_SENDER_TITLE, title)
-            putExtra(EXTRA_BODY, body)
-        }
-        // RemoteInput fills the intent in, so it must be mutable.
-        val replyPending = PendingIntent.getBroadcast(
-            context, convId, replyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-        val remoteInput = RemoteInput.Builder(KEY_REPLY)
-            .setLabel(L10n.str(R.string.chat_reply_hint))
-            .build()
-        val replyAction = NotificationCompat.Action.Builder(
-            R.drawable.ic_send, L10n.str(R.string.chat_reply_action), replyPending
-        )
-            .addRemoteInput(remoteInput)
-            .setAllowGeneratedReplies(true)
-            .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
-            .setShowsUserInterface(false)
-            .build()
 
         val me = Person.Builder().setName(L10n.str(R.string.chat_reply_you)).build()
         val sender = Person.Builder().setName(title).build()
@@ -94,24 +78,50 @@ object ChatNotifications {
             style.addMessage(L10n.str(R.string.chat_reply_failed, replyError), System.currentTimeMillis(), null as Person?)
         }
 
-        val notif = NotificationCompat.Builder(context, PbxForegroundService.CHANNEL_ID_CHAT)
+        val builder = NotificationCompat.Builder(context, PbxForegroundService.CHANNEL_ID_CHAT)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(style)
             .setSmallIcon(R.drawable.ic_stat_aipbx)
             .setColor(0xFF0284C7.toInt())
             .setContentIntent(openPending)
-            .addAction(replyAction)
             .setGroup("conv_$convId")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setCategory(if (callId > 0L) NotificationCompat.CATEGORY_CALL else NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             // The update after a reply must not ring again.
             .setOnlyAlertOnce(replyText != null || replyError != null)
             .apply { if (replyText == null && replyError == null) setDefaults(NotificationCompat.DEFAULT_ALL) }
-            .build()
 
-        nm.notify(notificationId(convId), notif)
+        if (allowReply) {
+            val replyIntent = Intent(context, ChatReplyReceiver::class.java).apply {
+                putExtra(ChatKeys.EXTRA_CONV_ID, convId)
+                putExtra(ChatKeys.EXTRA_TARGET_EXT, targetExt)
+                putExtra(ChatKeys.EXTRA_TARGET_NAME, targetName)
+                putExtra(ChatKeys.EXTRA_IS_GROUP, isGroup)
+                putExtra(EXTRA_SENDER_TITLE, title)
+                putExtra(EXTRA_BODY, body)
+            }
+            // RemoteInput fills the intent in, so it must be mutable.
+            val replyPending = PendingIntent.getBroadcast(
+                context, convId, replyIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+            val remoteInput = RemoteInput.Builder(KEY_REPLY)
+                .setLabel(L10n.str(R.string.chat_reply_hint))
+                .build()
+            val replyAction = NotificationCompat.Action.Builder(
+                R.drawable.ic_send, L10n.str(R.string.chat_reply_action), replyPending
+            )
+                .addRemoteInput(remoteInput)
+                .setAllowGeneratedReplies(true)
+                .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                .setShowsUserInterface(false)
+                .build()
+            builder.addAction(replyAction)
+        }
+
+        nm.notify(notificationId(convId), builder.build())
     }
 }
 

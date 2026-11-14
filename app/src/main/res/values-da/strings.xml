@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Kunne ikke slette gruppen (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Behold \'+\' præfiks</string>
     <string name="pref_send_plus_desc">Send internationalt \'+\' direkte til PBX til normalisering (TIL) eller konverter til 00 (FRA)</string>
+    <string name="chat_call_audio">Gruppeopkald med lyd</string>
+    <string name="chat_call_video">Gruppevideoopkald</string>
+    <string name="chat_call_join">Deltag</string>
+    <string name="chat_call_banner_audio">Lydopkald i gang</string>
+    <string name="chat_call_banner_video">Videoopkald i gang</string>
+    <string name="chat_call_started_audio">%1$s startede et lydopkald</string>
+    <string name="chat_call_started_video">%1$s startede et videoopkald</string>
+    <string name="chat_call_ended_summary">Opkald afsluttet · %1$s · %2$d deltagere</string>
+    <string name="chat_call_ended">Opkald afsluttet</string>
+    <string name="chat_call_failed">Kunne ikke starte eller deltage i opkald: %1$s</string>
 </resources>

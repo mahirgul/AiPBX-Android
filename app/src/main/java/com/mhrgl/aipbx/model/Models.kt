@@ -1,5 +1,7 @@
 package com.mhrgl.aipbx.model
 
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 
 data class ServerInfo(
@@ -163,7 +165,8 @@ data class FeatureSettings(
     @SerializedName("cf_noanswer_timeout") val cfNoAnswerTimeout: Int? = 20,
     @SerializedName("allowed_phone_mode") val allowedPhoneMode: String? = "both",
     // Server 1.22+: video calls on for the PBX and allowed for this user.
-    @SerializedName("video") val video: VideoSettings? = null
+    @SerializedName("video") val video: VideoSettings? = null,
+    @SerializedName("chat_calls") val chatCalls: Boolean = false
 )
 
 data class VideoSettings(
@@ -273,4 +276,55 @@ data class GenericChatActionResponse(
     @SerializedName("success") val success: Boolean,
     @SerializedName("error") val error: String? = null
 )
+
+data class ChatCallInfo(
+    @SerializedName("id") val id: Long,
+    @SerializedName("conversation_id") val conversationId: Int,
+    @SerializedName("video") val video: Boolean,
+    @SerializedName("started_by") val startedBy: String? = null,
+    @SerializedName("dial") val dial: String
+)
+
+data class ChatCallResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("created") val created: Boolean = false,
+    @SerializedName("call") val call: ChatCallInfo? = null,
+    @SerializedName("error") val error: String? = null
+)
+
+data class ChatCallMeta(
+    val callId: Long,
+    val video: Boolean,
+    val actor: String? = null,
+    val duration: Int? = null,
+    val parties: Int? = null
+)
+
+private val chatCallMetaGson = Gson()
+
+fun parseChatCallMeta(systemMeta: String?): ChatCallMeta? {
+    if (systemMeta.isNullOrBlank()) return null
+    return try {
+        val obj = chatCallMetaGson.fromJson(systemMeta, JsonObject::class.java) ?: return null
+        fun str(key: String): String? {
+            val el = obj.get(key) ?: return null
+            return if (el.isJsonNull) null else el.asString
+        }
+        val callId = str("call_id")?.toLongOrNull() ?: return null
+        val videoRaw = str("video")
+        val video = videoRaw == "1" || videoRaw.equals("true", ignoreCase = true)
+        val actor = str("actor")?.takeIf { it.isNotEmpty() }
+        val duration = str("duration")?.toIntOrNull()
+        val parties = str("parties")?.toIntOrNull()
+        ChatCallMeta(
+            callId = callId,
+            video = video,
+            actor = actor,
+            duration = duration,
+            parties = parties
+        )
+    } catch (_: Exception) {
+        null
+    }
+}
 

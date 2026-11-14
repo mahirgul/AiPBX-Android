@@ -965,4 +965,50 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                 Result.failure(e)
             }
         }
+
+    suspend fun startOrJoinChatCall(
+        baseUrl: String,
+        token: String,
+        conversationId: Int? = null,
+        video: Boolean = false,
+        callId: Long? = null
+    ): Result<ChatCallResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val cleanUrl = baseUrl.trim().trimEnd('/')
+                val endpoint = "$cleanUrl/chat/api/conversations/call"
+                val jsonBody = JSONObject().apply {
+                    if (callId != null && callId > 0L) {
+                        put("call_id", callId)
+                    } else {
+                        if (conversationId != null) put("conversation_id", conversationId)
+                        put("video", video)
+                    }
+                }.toString()
+
+                val request = Request.Builder()
+                    .url(endpoint)
+                    .addHeader("Authorization", "Bearer $token")
+                    .post(jsonBody.toRequestBody(jsonMediaType))
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val body = response.body?.string() ?: ""
+                    val res = try {
+                        if (body.isNotBlank()) gson.fromJson(body, ChatCallResponse::class.java) else null
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (response.isSuccessful && res != null && res.success && res.call != null) {
+                        Result.success(res)
+                    } else {
+                        val msg = res?.error?.takeIf { it.isNotBlank() }
+                            ?: if (response.code == 410) "This call has ended." else "Chat call failed (${response.code})"
+                        Result.failure(Exception(msg))
+                    }
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 }

@@ -424,4 +424,14 @@
     <string name="api_group_delete_failed">Kunde inte ta bort gruppen (HTTP %1$s)</string>
     <string name="pref_send_plus_title">Behåll \'+\' prefix</string>
     <string name="pref_send_plus_desc">Skicka internationellt \'+\' direkt till PBX för normalisering (PÅ) eller konvertera till 00 (AV)</string>
+    <string name="chat_call_audio">Gruppröstsamtal</string>
+    <string name="chat_call_video">Gruppvideosamtal</string>
+    <string name="chat_call_join">Gå med</string>
+    <string name="chat_call_banner_audio">Röstsamtal pågår</string>
+    <string name="chat_call_banner_video">Videosamtal pågår</string>
+    <string name="chat_call_started_audio">%1$s startade ett röstsamtal</string>
+    <string name="chat_call_started_video">%1$s startade ett videosamtal</string>
+    <string name="chat_call_ended_summary">Samtalet avslutades · %1$s · %2$d deltagare</string>
+    <string name="chat_call_ended">Samtalet avslutades</string>
+    <string name="chat_call_failed">Kunde inte starta eller gå med i samtal: %1$s</string>
 </resources>
