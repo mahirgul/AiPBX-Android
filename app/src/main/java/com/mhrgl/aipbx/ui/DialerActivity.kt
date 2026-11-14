@@ -48,6 +48,7 @@ import com.mhrgl.aipbx.databinding.DialogGroupInfoBinding
 import com.mhrgl.aipbx.databinding.DialogNewGroupBinding
 import com.mhrgl.aipbx.engine.SipEngineListener
 import com.mhrgl.aipbx.model.CallStatus
+import com.mhrgl.aipbx.model.ChatCallEndedException
 import com.mhrgl.aipbx.model.ChatCallMeta
 import com.mhrgl.aipbx.model.ChatConversation
 import com.mhrgl.aipbx.model.ChatMessage
@@ -90,6 +91,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
     private var activeGroupCall: ChatCallMeta? = null
     private val endedGroupCallIds = mutableSetOf<Long>()
     private var isStartingOrJoiningChatCall: Boolean = false
+    /** The call the server was last asked about (a call found in the history may be long over). */
+    private var probedGroupCallId: Long = 0L
 
     private val pickChatDocumentLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) handleChatPickedUri(uri, "file")
@@ -1508,6 +1511,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         chatMessageAdapter.setGroupCallState(null, emptySet())
         chatMessageAdapter.submitList(emptyList())
         activeGroupCall = null
+        probedGroupCallId = 0L
         endedGroupCallIds.clear()
         updateChatActiveCallBanner()
         binding.etChatMessage.setText("")
@@ -1670,6 +1674,36 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         endedGroupCallIds.addAll(ended)
         chatMessageAdapter.setGroupCallState(openCall?.callId, endedGroupCallIds)
         updateChatActiveCallBanner()
+        openCall?.let { probeGroupCall(it.callId) }
+    }
+
+    /** The banner and the cards drop a call that is over. */
+    private fun markGroupCallEnded(callId: Long) {
+        endedGroupCallIds.add(callId)
+        if (activeGroupCall?.callId == callId) {
+            activeGroupCall = null
+        }
+        if (::chatMessageAdapter.isInitialized) {
+            chatMessageAdapter.setGroupCallState(activeGroupCall?.callId, endedGroupCallIds)
+        }
+        updateChatActiveCallBanner()
+    }
+
+    /**
+     * A call that looks open in the history is checked with the server once: when
+     * Asterisk restarted during a call no "ended" message was ever written, and the
+     * banner would offer Join for a call nobody can enter. The request only asks.
+     */
+    private fun probeGroupCall(callId: Long) {
+        if (callId <= 0L || probedGroupCallId == callId) return
+        val sUrl = prefs.serverUrl ?: return
+        val token = prefs.token ?: return
+        probedGroupCallId = callId
+        lifecycleScope.launch {
+            apiClient.startOrJoinChatCall(baseUrl = sUrl, token = token, callId = callId).onFailure { err ->
+                if (err is ChatCallEndedException) markGroupCallEnded(callId)
+            }
+        }
     }
 
     private fun updateChatActiveCallBanner() {
@@ -1695,6 +1729,12 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         callId: Long? = null
     ) {
         if (isStartingOrJoiningChatCall) return
+        // Already in a call (this one or another): show it, never dial a second one.
+        val status = pbxService?.engine?.currentCallStatus
+        if (status != null && status != CallStatus.IDLE && status != CallStatus.ENDED) {
+            startActivity(Intent(this, CallActivity::class.java))
+            return
+        }
         val sUrl = prefs.serverUrl ?: return
         val token = prefs.token ?: return
         if (callId == null && (conversationId == null || conversationId <= 0)) return
@@ -1737,15 +1777,8 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
                     }
                 }.onFailure { err ->
                     val msg = err.message ?: ""
-                    if (callId != null && msg.contains("ended", ignoreCase = true)) {
-                        endedGroupCallIds.add(callId)
-                        if (activeGroupCall?.callId == callId) {
-                            activeGroupCall = null
-                        }
-                        if (::chatMessageAdapter.isInitialized) {
-                            chatMessageAdapter.setGroupCallState(activeGroupCall?.callId, endedGroupCallIds)
-                        }
-                        updateChatActiveCallBanner()
+                    if (callId != null && err is ChatCallEndedException) {
+                        markGroupCallEnded(callId)
                     }
                     Toast.makeText(
                         this@DialerActivity,

@@ -1002,9 +1002,9 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
                     if (response.isSuccessful && res != null && res.success && res.call != null) {
                         Result.success(res)
                     } else {
-                        val msg = res?.error?.takeIf { it.isNotBlank() }
-                            ?: if (response.code == 410) "This call has ended." else "Chat call failed (${response.code})"
-                        Result.failure(Exception(msg))
+                        val msg = res?.error?.takeIf { it.isNotBlank() } ?: "Chat call failed (${response.code})"
+                        // 410 is how the server says "ended"; its text may change, the code does not.
+                        Result.failure(if (response.code == 410) ChatCallEndedException(msg) else Exception(msg))
                     }
                 }
             } catch (e: Exception) {

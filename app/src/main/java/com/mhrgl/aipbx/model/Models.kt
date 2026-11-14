@@ -292,6 +292,9 @@ data class ChatCallResponse(
     @SerializedName("error") val error: String? = null
 )
 
+/** The server answered 410: the call has ended (or was never closed and is too old to join). */
+class ChatCallEndedException(message: String) : Exception(message)
+
 data class ChatCallMeta(
     val callId: Long,
     val video: Boolean,
