@@ -22,8 +22,10 @@ is optional.
    camera and a button that hides the controls in a video call. Incoming calls wake the locked screen
    (`IncomingCallActivity`).
 2. **History:** the server's call records (`/api/mobile/call_history.php`), filters for all, missed,
-   incoming and outgoing; call or chat from a row.
-3. **Contacts:** the PBX directory with presence (online/offline) and the device's contacts.
+   incoming and outgoing; call, video call or chat from a row.
+3. **Contacts:** the PBX directory with presence (online/offline) and the device's contacts; company
+   extensions (fax lines are not listed) have chat, video call and call buttons, a device contact only
+   call. A tap on a row offers the same choices.
 4. **Chat:** direct and group chats over the chat service's WebSocket, photos and files, group
    management, and group voice/video conference calls (`POST /chat/api/conversations/call`,
    `call_started`/`call_ended` cards, active-call banner, and dialling `cc<room>` with the built-in
