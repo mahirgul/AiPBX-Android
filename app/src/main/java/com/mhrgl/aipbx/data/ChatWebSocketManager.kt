@@ -44,6 +44,9 @@ class ChatWebSocketManager private constructor() {
     private var reconnectAttempts = 0
     private var currentUrl: String = ""
     private var currentToken: String = ""
+    private var reconnectJob: Job? = null
+    private var authSession: AuthSession? = null
+    private var sessionProvider: (() -> AuthSession?)? = null
 
     private val onlineExtensions = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     /** ext -> ISO time the user was last active (from presence events). */
@@ -98,8 +101,13 @@ class ChatWebSocketManager private constructor() {
         listeners.remove(listener)
     }
 
-    fun connect(baseUrl: String, token: String) {
+    @Synchronized
+    fun connect(baseUrl: String, token: String, sessionProvider: (() -> AuthSession?)? = this.sessionProvider) {
         if (baseUrl.isEmpty() || token.isEmpty()) return
+        this.sessionProvider = sessionProvider
+        authSession = sessionProvider?.invoke()
+        reconnectJob?.cancel()
+        reconnectJob = null
 
         // DialerActivity and PbxForegroundService both call connect(). A call arriving during the handshake used to cancel
         // the old socket and open a new one: the server counted the same phone as
@@ -136,8 +144,16 @@ class ChatWebSocketManager private constructor() {
         old?.cancel()
     }
 
+    @Synchronized
     fun disconnect() {
         isManuallyClosed = true
+        reconnectJob?.cancel()
+        reconnectJob = null
+        reconnectAttempts = 0
+        authSession = null
+        sessionProvider = null
+        currentUrl = ""
+        currentToken = ""
         webSocket?.close(1000, "Normal closure")
         webSocket = null
         isConnected = false
@@ -350,17 +366,24 @@ class ChatWebSocketManager private constructor() {
         }
     }
 
+    @Synchronized
     private fun scheduleReconnect() {
-        if (isManuallyClosed) return
+        if (isManuallyClosed || reconnectJob?.isActive == true) return
 
         reconnectAttempts++
         val delaySec = (reconnectAttempts * 2).coerceAtMost(30)
         Log.i(TAG, "Scheduling Chat WS reconnect in ${delaySec}s (attempt #$reconnectAttempts)...")
 
-        scope.launch {
+        reconnectJob = scope.launch {
             delay(delaySec * 1000L)
-            if (!isManuallyClosed && !isConnected && !isConnecting && currentUrl.isNotEmpty() && currentToken.isNotEmpty()) {
-                connect(currentUrl, currentToken)
+            synchronized(this@ChatWebSocketManager) {
+                reconnectJob = null
+                if (isManuallyClosed || isConnected || isConnecting) return@synchronized
+                val saved = authSession
+                val current = sessionProvider?.invoke()
+                if (saved != null && current != null && current.generation == saved.generation && current.serverUrl == saved.serverUrl) {
+                    connect(current.serverUrl, current.token)
+                }
             }
         }
     }

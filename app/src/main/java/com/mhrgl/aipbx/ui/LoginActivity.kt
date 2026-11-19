@@ -271,6 +271,8 @@ class LoginActivity : BaseActivity() {
 
     /** The same steps as "Log out" in DialerActivity (order matters: auth is deleted first so the service does not revive itself). */
     private fun signOutCurrentSession() {
+        // The old PBX forgets this phone too, or it keeps sending it pushes (it takes the session before clearAuth).
+        FcmHelper.unregisterTokenFromServer(this)
         prefs.clearAuth()
         ChatWebSocketManager.instance.disconnect()
         stopService(Intent(this, PbxForegroundService::class.java))

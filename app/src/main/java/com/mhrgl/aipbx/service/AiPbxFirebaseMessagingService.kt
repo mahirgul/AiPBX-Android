@@ -17,8 +17,11 @@ class AiPbxFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.i(TAG, "New FCM Token received: ${token.take(15)}...")
-        AppPreferences.getInstance(this).fcmToken = token
-        FcmHelper.sendTokenToServer(this, token)
+        val prefs = AppPreferences.getInstance(this)
+        if (prefs.pushConfig?.let { it.enabled && it.provider == "fcm" } != true) return
+        val session = prefs.sessionSnapshot() ?: return
+        prefs.fcmToken = token
+        FcmHelper.sendTokenToServer(this, token, session)
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
@@ -28,6 +31,11 @@ class AiPbxFirebaseMessagingService : FirebaseMessagingService() {
             Log.d(TAG, "Ignoring incoming FCM push because user is logged out")
             return
         }
+        val pushConfig = prefs.pushConfig ?: return
+        if (!pushConfig.enabled || pushConfig.provider != "fcm") return
+        val sender = remoteMessage.from
+        if (!pushConfig.fcmSenderId.isNullOrBlank() && sender != null && sender.all(Char::isDigit)
+            && sender != pushConfig.fcmSenderId) return
         val data = remoteMessage.data
         val action = data["action"] ?: "incoming_call"
         Log.i(TAG, "FCM Message received from: ${remoteMessage.from}, action=$action")

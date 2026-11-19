@@ -153,7 +153,7 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         val sUrl = prefs.serverUrl
         val tok = prefs.token
         if (!sUrl.isNullOrEmpty() && !tok.isNullOrEmpty()) {
-            ChatWebSocketManager.instance.connect(sUrl, tok)
+            ChatWebSocketManager.instance.connect(sUrl, tok, prefs::sessionSnapshot)
         }
     }
 
@@ -165,26 +165,21 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
         }
     }
 
+    private var refreshingSession = false
+
     private fun checkAndRefreshToken() {
         val now = System.currentTimeMillis()
-        // Refresh the token and the TURN session every 24 hours (M5)
-        if (now - prefs.lastTokenRefreshTime > 24 * 3600 * 1000L && prefs.isLoggedIn) {
-            val session = prefs.sessionSnapshot()
-            if (session != null) {
-                serviceScope.launch {
-                    val res = apiClient.refreshToken(session.serverUrl, session.token)
-                    res.onSuccess { newLogin ->
-                        Log.i(TAG, "Session token & TURN credentials refreshed successfully (M5)")
-                        if (!prefs.saveRefresh(session, newLogin)) return@onSuccess
-                        FcmHelper.initIfConfigured(this@PbxForegroundService, newLogin.pushConfig)
-                        prefs.lastTokenRefreshTime = System.currentTimeMillis()
-                    }.onFailure { err ->
-                        Log.w(TAG, "Session token refresh failed: ${err.message} (M5)")
-                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) {
-                            SessionExpiry.signOut(this@PbxForegroundService, err.message, session)
-                        }
-                    }
+        if (refreshingSession || now - prefs.lastTokenRefreshTime <= 24 * 3600 * 1000L || !prefs.isLoggedIn) return
+        val session = prefs.sessionSnapshot() ?: return
+        refreshingSession = true
+        serviceScope.launch(Dispatchers.Main.immediate) {
+            try {
+                if (apiClient.refreshSavedSession(session) && prefs.sessionSnapshot()?.generation == session.generation) {
+                    FcmHelper.initIfConfigured(this@PbxForegroundService)
+                    connectChatWs()
                 }
+            } finally {
+                refreshingSession = false
             }
         }
     }
@@ -262,20 +257,26 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
             connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
-                    Log.d(TAG, "Default network available, resetting backoff and triggering immediate SIP reconnect (M28)")
-                    isNetworkAvailable = true
-                    currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
-                    reconnectHandler.removeCallbacks(reconnectRunnable)
-                    if (prefs.isLoggedIn) {
-                        connectSip()
-                        connectChatWs()
+                    reconnectHandler.post {
+                        if (!isServiceRunning) return@post
+                        Log.d(TAG, "Default network available, resetting backoff and triggering immediate SIP reconnect (M28)")
+                        isNetworkAvailable = true
+                        currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
+                        reconnectHandler.removeCallbacks(reconnectRunnable)
+                        if (prefs.isLoggedIn) {
+                            connectSip()
+                            connectChatWs()
+                        }
                     }
                 }
 
                 override fun onLost(network: Network) {
-                    Log.d(TAG, "Default network lost, cancelling pending reconnects (M28)")
-                    isNetworkAvailable = false
-                    reconnectHandler.removeCallbacks(reconnectRunnable)
+                    reconnectHandler.post {
+                        if (!isServiceRunning) return@post
+                        Log.d(TAG, "Default network lost, cancelling pending reconnects (M28)")
+                        isNetworkAvailable = false
+                        reconnectHandler.removeCallbacks(reconnectRunnable)
+                    }
                 }
             }
             networkCallback?.let { connectivityManager?.registerDefaultNetworkCallback(it) }
@@ -374,18 +375,14 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
             Log.i(TAG, "SIP credentials missing from encrypted storage. Fetching fresh credentials via session token (T-5)...")
             val session = prefs.sessionSnapshot()
             if (session != null) {
-                serviceScope.launch {
-                    val res = apiClient.refreshToken(session.serverUrl, session.token)
-                    res.onSuccess { newLogin ->
-                        Log.i(TAG, "Session restored and fresh SIP credentials saved to encrypted storage")
-                        if (!prefs.saveRefresh(session, newLogin)) return@onSuccess
-                        FcmHelper.initIfConfigured(this@PbxForegroundService, newLogin.pushConfig)
+                serviceScope.launch(Dispatchers.Main.immediate) {
+                    if (apiClient.refreshSavedSession(session)
+                        && prefs.sessionSnapshot()?.generation == session.generation
+                        && !prefs.sipPassword.isNullOrEmpty()
+                        && !prefs.wsUrl.isNullOrEmpty()
+                        && !prefs.domain.isNullOrEmpty()) {
+                        FcmHelper.initIfConfigured(this@PbxForegroundService)
                         connectSip()
-                    }.onFailure { err ->
-                        Log.w(TAG, "Failed to refresh SIP credentials after recovery: ${err.message}")
-                        if (err is com.mhrgl.aipbx.model.SessionExpiredException) {
-                            SessionExpiry.signOut(this@PbxForegroundService, err.message, session)
-                        }
                     }
                 }
             }

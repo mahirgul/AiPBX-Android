@@ -189,6 +189,7 @@ class AppPreferences(context: Context) : SessionRefreshStore {
             memoryFcmApiKey = pc.fcmApiKey
         }
         p.edit().apply {
+            putLong(KEY_LAST_TOKEN_REFRESH_TIME, System.currentTimeMillis())
             if (isEncrypted) {
                 putString(KEY_TOKEN, response.token)
             }

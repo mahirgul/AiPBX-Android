@@ -42,19 +42,19 @@ class SessionRefreshInterceptor(
             return response
         }
 
-        val retryToken = synchronized(refreshLock) {
-            val current = store.sessionSnapshot()
-            if (current == null || !sameLogin(started, current)) {
-                null
-            } else if (current.token != started.token) {
-                current.token
-            } else {
-                refresh(store, current)
-            }
-        }
+        val retryToken = refreshIfCurrent(store, started)
         if (retryToken == null) return response
         response.close()
         return chain.proceed(request.newBuilder().header("Authorization", "Bearer $retryToken").build())
+    }
+
+    fun refreshIfCurrent(store: SessionRefreshStore, started: AuthSession): String? = synchronized(refreshLock) {
+        val current = store.sessionSnapshot()
+        when {
+            current == null || !sameLogin(started, current) -> null
+            current.token != started.token -> current.token
+            else -> refresh(store, current)
+        }
     }
 
     private fun refresh(store: SessionRefreshStore, session: AuthSession): String? {

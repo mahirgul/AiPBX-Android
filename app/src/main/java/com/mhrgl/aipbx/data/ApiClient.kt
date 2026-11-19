@@ -44,12 +44,19 @@ class ApiClient(private val prefsProvider: (() -> AppPreferences?)? = null) {
             .build()
     }
 
+    private val refreshInterceptor by lazy {
+        SessionRefreshInterceptor(rawClient, { prefsProvider?.invoke() }) { session, reason ->
+            onSessionRejected?.invoke(session, reason)
+        }
+    }
+
     private val client: OkHttpClient by lazy {
-        rawClient.newBuilder()
-            .addInterceptor(SessionRefreshInterceptor(rawClient, { prefsProvider?.invoke() }) { session, reason ->
-                onSessionRejected?.invoke(session, reason)
-            })
-            .build()
+        rawClient.newBuilder().addInterceptor(refreshInterceptor).build()
+    }
+
+    suspend fun refreshSavedSession(expected: AuthSession): Boolean = withContext(Dispatchers.IO) {
+        val prefs = prefsProvider?.invoke() ?: return@withContext false
+        refreshInterceptor.refreshIfCurrent(prefs, expected) != null
     }
 
     suspend fun ping(baseUrl: String): Result<ServerInfo> = withContext(Dispatchers.IO) {

@@ -310,7 +310,7 @@ class DialerActivity : BaseActivity(), SipEngineListener, ChatEventListener {
         val sUrl = prefs.serverUrl
         val token = prefs.token
         if (!sUrl.isNullOrEmpty() && !token.isNullOrEmpty()) {
-            ChatWebSocketManager.instance.connect(sUrl, token)
+            ChatWebSocketManager.instance.connect(sUrl, token, prefs::sessionSnapshot)
         }
 
         val sleptInBackground = prefs.hasSleepingWarning
