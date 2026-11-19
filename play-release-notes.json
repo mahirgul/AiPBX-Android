@@ -1,9 +1,9 @@
 {
   "_comment": "'What's new' text for Google Play (max 500 characters per language). Update it with every new versionName; upload_to_play_console.py uses it only when 'version' matches the app's versionName, otherwise a neutral text.",
-  "version": "1.77.2",
+  "version": "1.80.0",
   "notes": {
-    "en-US": "AiPBX v1.77.2: Your company's logo and colour from the server on the sign-in screen and in the header (a dark-theme logo in dark mode). Contacts have a video call button; fax lines are no longer listed.",
-    "tr-TR": "AiPBX v1.77.2: Şirketinizin logosu ve rengi sunucudan gelir; giriş ekranında ve üst çubukta görünür (karanlık temada koyu logo). Kişilerde görüntülü arama düğmesi var; faks hatları artık listelenmiyor."
+    "en-US": "AiPBX v1.80.0: More reliable push notifications: the app follows the server's push settings, and signing out or switching accounts with a QR code removes the old device registration. The session is refreshed once at a time, and chat reconnects with the current sign-in.",
+    "tr-TR": "AiPBX v1.80.0: Bildirimler daha güvenilir: uygulama sunucunun bildirim ayarlarını izler; çıkışta ya da QR ile hesap değiştirince eski cihaz kaydı silinir. Oturum aynı anda tek kez yenilenir, sohbet güncel girişle yeniden bağlanır."
   },
   "fallback": {
     "en-US": "Bug fixes and improvements.",
