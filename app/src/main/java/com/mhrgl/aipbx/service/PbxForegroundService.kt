@@ -263,6 +263,8 @@ class PbxForegroundService : Service(), SipEngineListener, ChatEventListener {
                         isNetworkAvailable = true
                         currentReconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
                         reconnectHandler.removeCallbacks(reconnectRunnable)
+                        // A call in progress keeps its UA and moves its audio to the new network.
+                        if (::engine.isInitialized) engine.onNetworkChanged()
                         if (prefs.isLoggedIn) {
                             connectSip()
                             connectChatWs()

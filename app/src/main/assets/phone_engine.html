@@ -23,6 +23,118 @@
         var ua = null;
         var currentSession = null;
         var globalIceServers = [];
+        // The network changed during a call: renew ICE once the SIP socket is back.
+        var pendingIceRestart = null;
+        var iceRetryTimer = null;
+
+        // The server sends several TURN addresses (TURNS 443 and TURN UDP 3478), kept as one
+        // space-separated string; older builds stored only the first.
+        function turnUrlList(turnUrl) {
+            return String(turnUrl || "").split(/\s+/).filter(function(u) { return !!u; });
+        }
+
+        function hasActiveCall() {
+            return !!(currentSession && !(currentSession.isEnded && currentSession.isEnded()));
+        }
+
+        // A new path for the call's audio: a re-INVITE with fresh ICE credentials, so the media
+        // moves to the new network (Wi-Fi <-> mobile) instead of staying on the dead one.
+        // JsSIP 3.1 sends the offer as soon as setLocalDescription resolves; on a restart the
+        // gathering state still reads "complete" from the old round, so the offer would leave
+        // without candidates and Asterisk answers without ICE ("Media Renegotiation Failed", the
+        // call drops). The local description is held until a relay candidate is in it or the new
+        // gathering is done (4 s at most). Same logic as webrtc_ice.js on the web.
+        function iceRestartNow(reason) {
+            clearTimeout(iceRetryTimer);
+            iceRetryTimer = null;
+            var s = currentSession, pc = s && s.connection;
+            if (!hasActiveCall() || pendingIceRestart !== s) {
+                pendingIceRestart = null;
+                return;
+            }
+            if (!pc || !(s.isEstablished && s.isEstablished()) || !ua || !ua.isConnected()) return;
+            if (pc.__aipbxIceRestarting) return;
+            pc.__aipbxIceRestarting = true;
+            var orig = pc.setLocalDescription, sawGathering = false;
+            function onState() { if (pc.iceGatheringState === "gathering") sawGathering = true; }
+            pc.addEventListener("icegatheringstatechange", onState);
+            function cleanup() {
+                pc.removeEventListener("icegatheringstatechange", onState);
+                pc.__aipbxIceRestarting = false;
+            }
+            function restore() {
+                if (pc.setLocalDescription === setLocalDescription) pc.setLocalDescription = orig;
+                cleanup();
+            }
+            function setLocalDescription() {
+                pc.setLocalDescription = orig;
+                var args = arguments;
+                return Promise.resolve().then(function() { return orig.apply(pc, args); }).then(function() {
+                    return new Promise(function(resolve) {
+                        var t0 = Date.now();
+                        (function poll() {
+                            var sdp = (pc.localDescription && pc.localDescription.sdp) || "";
+                            if (/ typ relay /.test(sdp) || (sawGathering && pc.iceGatheringState === "complete") || Date.now() - t0 > 4000) {
+                                cleanup();
+                                return resolve();
+                            }
+                            setTimeout(poll, 50);
+                        })();
+                    });
+                }).catch(function(error) {
+                    cleanup();
+                    throw error;
+                });
+            }
+            pc.setLocalDescription = setLocalDescription;
+            try {
+                if (s.renegotiate({ rtcOfferConstraints: { iceRestart: true } })) {
+                    pendingIceRestart = null;
+                    log("ICE restart (" + reason + ")");
+                } else {
+                    restore();
+                    iceRetryTimer = setTimeout(function() {
+                        iceRetryTimer = null;
+                        if (pendingIceRestart === s && currentSession === s) iceRestartNow(reason);
+                    }, 350);
+                }
+            } catch (e) {
+                restore();
+                log("ICE restart failed: " + e);
+            }
+        }
+
+        // Called by the app when the default network changes.
+        function onNetworkChanged() {
+            if (!hasActiveCall()) return;
+            pendingIceRestart = currentSession;
+            iceRestartNow("network changed");
+        }
+
+        // JsSIP 3.1 waits for ICE gathering to finish before it sends the SDP; an unreachable
+        // TURN address can hold that for seconds. Shortly after the first relay candidate (at
+        // most 3 s after the first candidate) gathering is ended with what there is.
+        function capIceGathering(pc) {
+            if (pc.__aipbxIceCap) return;  // the handlers attach more than once per call
+            pc.__aipbxIceCap = true;
+            var done = false, timer = null;
+            function finish() {
+                if (done || pc.iceGatheringState === "complete") return;
+                done = true;
+                try { pc.dispatchEvent(new RTCPeerConnectionIceEvent("icecandidate", { candidate: null })); } catch (e) {}
+            }
+            pc.addEventListener("icegatheringstatechange", function() {
+                if (pc.iceGatheringState === "gathering") { done = false; clearTimeout(timer); timer = null; }
+            });
+            pc.addEventListener("icecandidate", function(e) {
+                if (!e.candidate || done) return;
+                if (/ typ relay /.test(e.candidate.candidate || "")) {
+                    clearTimeout(timer); timer = setTimeout(finish, 300);
+                } else if (!timer) {
+                    timer = setTimeout(finish, 3000);
+                }
+            });
+        }
 
         function log(msg) {
             if (window.AndroidBridge && window.AndroidBridge.log) {
@@ -104,6 +216,7 @@
         function attachPeerConnectionHandlers(pc) {
             if (!pc) return;
             log("Attaching peerconnection handlers to RTCPeerConnection");
+            capIceGathering(pc);
 
             pc.addEventListener('iceconnectionstatechange', function() {
                 log("ICE Connection State: " + pc.iceConnectionState);
@@ -300,6 +413,11 @@
         function initUA(wsUrl, sipUsername, password, domain, displayName, turnUrl, turnUser, turnPass) {
             try {
                 var configKey = wsUrl + "|" + sipUsername + "|" + domain;
+                var turnUrls = turnUrlList(turnUrl);
+                // Future calls use the current ICE configuration even when the SIP UA is reused.
+                globalIceServers = turnUrls.length && turnUser && turnPass
+                    ? [{ urls: turnUrls, username: turnUser, credential: turnPass }]
+                    : [{ urls: "stun:stun.l.google.com:19302" }];
 
                 // If the UA already runs with the same settings and is connected, do not stop it for nothing.
                 if (ua && currentConfigKey === configKey) {
@@ -316,6 +434,15 @@
                     }
                 }
 
+                // A call in progress: stopping the UA would end it. JsSIP reconnects the socket
+                // by itself; the ICE restart follows once it is back.
+                if (ua && currentConfigKey === configKey && hasActiveCall()) {
+                    log("initUA: call in progress, keeping the UA");
+                    pendingIceRestart = currentSession;
+                    try { if (!(ua.isConnected && ua.isConnected())) ua.start(); } catch (e) {}
+                    return;
+                }
+
                 currentConfigKey = configKey;
 
                 if (ua) {
@@ -327,20 +454,6 @@
                 log("Initializing JsSIP UA for " + sipUsername + " on " + wsUrl);
 
                 var socket = new JsSIP.WebSocketInterface(wsUrl);
-
-                globalIceServers = [];
-                var turnVar = !!(turnUrl && turnUser && turnPass);
-                if (turnVar) {
-                    globalIceServers.push({
-                        urls: turnUrl,
-                        username: turnUser,
-                        credential: turnPass
-                    });
-                }
-                // The public STUN server is added ONLY when there is no TURN server (2026-09-05).
-                if (!turnVar) {
-                    globalIceServers.push({ urls: "stun:stun.l.google.com:19302" });
-                }
 
                 var configuration = {
                     sockets: [socket],
@@ -365,6 +478,7 @@
 
                 ua.on('connected', function() {
                     log("SIP WebSocket connected");
+                    if (pendingIceRestart) iceRestartNow("SIP socket back after a network change");
                 });
 
                 ua.on('registered', function() {
@@ -449,6 +563,7 @@
 
             session.on('confirmed', function() {
                 log("Call confirmed/answered");
+                if (pendingIceRestart === session) iceRestartNow("call confirmed after network change");
                 updateLocalPreview();
                 if (window.AndroidBridge) window.AndroidBridge.onCallConfirmed();
             });
@@ -456,6 +571,7 @@
             session.on('ended', function(e) {
                 log("Call ended: " + (e.cause || ""));
                 cleanupMedia(session);
+                if (pendingIceRestart === session) pendingIceRestart = null;
                 currentSession = null;
                 if (window.AndroidBridge) window.AndroidBridge.onCallEnded(e.cause || "ENDED");
             });
@@ -463,6 +579,7 @@
             session.on('failed', function(e) {
                 log("Call failed: " + (e.cause || ""));
                 cleanupMedia(session);
+                if (pendingIceRestart === session) pendingIceRestart = null;
                 currentSession = null;
                 if (window.AndroidBridge) window.AndroidBridge.onCallEnded(e.cause || "FAILED");
             });
@@ -505,10 +622,11 @@
 
                 var iceServers = (globalIceServers && globalIceServers.length > 0) ? globalIceServers.slice() : [];
                 if (turnUrl && turnUser && turnPass) {
-                    var exists = iceServers.some(function(s) { return s.urls === turnUrl; });
+                    var first = turnUrlList(turnUrl)[0];
+                    var exists = iceServers.some(function(s) { return [].concat(s.urls).indexOf(first) >= 0; });
                     if (!exists) {
                         iceServers.unshift({
-                            urls: turnUrl,
+                            urls: turnUrlList(turnUrl),
                             username: turnUser,
                             credential: turnPass
                         });

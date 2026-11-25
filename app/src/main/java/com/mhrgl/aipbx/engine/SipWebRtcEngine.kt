@@ -244,6 +244,11 @@ class SipWebRtcEngine(private val context: Context) {
         }
     }
 
+    /** The default network changed: a call in progress renews its ICE path (Wi-Fi <-> mobile). */
+    fun onNetworkChanged() {
+        handler.post { webView?.evaluateJavascript("onNetworkChanged();", null) }
+    }
+
     fun checkEngineStatus() {
         handler.post {
             webView?.evaluateJavascript("checkEngineStatus();", null)

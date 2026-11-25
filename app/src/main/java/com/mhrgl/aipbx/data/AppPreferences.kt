@@ -181,10 +181,11 @@ class AppPreferences(context: Context) : SessionRefreshStore {
         if (!s.sipPassword.isNullOrEmpty()) {
             memorySipPassword = s.sipPassword
         }
-        s.turn?.let { turn ->
-            if (!turn.username.isNullOrEmpty()) memoryTurnUser = turn.username
-            if (!turn.credential.isNullOrEmpty()) memoryTurnPass = turn.credential
+        val turn = s.turn?.takeIf {
+            !it.urls.isNullOrEmpty() && !it.username.isNullOrEmpty() && !it.credential.isNullOrEmpty()
         }
+        memoryTurnUser = turn?.username
+        memoryTurnPass = turn?.credential
         response.pushConfig?.let { pc ->
             memoryFcmApiKey = pc.fcmApiKey
         }
@@ -207,11 +208,12 @@ class AppPreferences(context: Context) : SessionRefreshStore {
             if (!s.wsUrl.isNullOrEmpty()) {
                 putString(KEY_WS_URL, s.wsUrl)
             }
-            s.turn?.let { turn ->
-                if (isEncrypted && !turn.username.isNullOrEmpty()) putString(KEY_TURN_USER, turn.username)
-                if (isEncrypted && !turn.credential.isNullOrEmpty()) putString(KEY_TURN_PASS, turn.credential)
-                if (!turn.urls.isNullOrEmpty()) putString(KEY_TURN_URL, turn.urls.firstOrNull())
+            if (isEncrypted) {
+                putString(KEY_TURN_USER, turn?.username)
+                putString(KEY_TURN_PASS, turn?.credential)
             }
+            // Keep all addresses together with the credentials from the same response.
+            putString(KEY_TURN_URL, turn?.urls?.joinToString(" "))
             response.pushConfig?.let { pc ->
                 putString(KEY_PUSH_PROVIDER, if (pc.enabled) pc.provider else "none")
                 putString(KEY_FCM_PROJECT_ID, pc.fcmProjectId)
