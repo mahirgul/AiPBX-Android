@@ -83,12 +83,24 @@ object BrandLook {
         val bitmap = (dark ?: light)?.let { BitmapFactory.decodeFile(it.path) }
         if (bitmap == null) {
             view.setImageResource(R.drawable.app_logo_white_circle)
-            view.layoutParams = view.layoutParams.apply { width = height }
+            setLogoWidth(view, wide = false)
             return
         }
         view.setImageBitmap(bitmap)
         view.scaleType = ImageView.ScaleType.FIT_CENTER
-        view.layoutParams = view.layoutParams.apply { width = if (prefs.brandLogoStyle == "wide") height * 3 else height }
+        setLogoWidth(view, wide = prefs.brandLogoStyle == "wide")
+    }
+
+    private fun setLogoWidth(view: ImageView, wide: Boolean) {
+        val h = view.height.takeIf { it > 0 } ?: view.layoutParams?.height?.takeIf { it > 0 }
+        if (h != null) {
+            view.layoutParams = view.layoutParams.apply { width = if (wide) h * 3 else h }
+        } else {
+            view.post {
+                val measuredH = view.height.takeIf { it > 0 } ?: return@post
+                view.layoutParams = view.layoutParams.apply { width = if (wide) measuredH * 3 else measuredH }
+            }
+        }
     }
 
     /** The company colour on the brand name and the main button, when one is set. */
